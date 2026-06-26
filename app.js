@@ -400,16 +400,18 @@ function renderStatCards(){
     totalV += counts["V"]||0;
     totalAll += total;
   });
+  const totalConvocations = totalC + totalP;
   const cards = [
-    { val: totalC, lbl: "Convoqué" },
+    { val: totalC, lbl: "Convoqué (en attente)" },
     { val: totalP, lbl: "Payé" },
     { val: totalV, lbl: "Volontaire" },
     { val: totalNR, lbl: "Non retenu" },
+    { val: totalConvocations, lbl: "Total convocations", highlight: true },
     { val: totalAll, lbl: "Total saisies" }
   ];
   cards.forEach(c=>{
     const div = document.createElement("div");
-    div.className = "stat-card";
+    div.className = "stat-card" + (c.highlight ? " stat-card-highlight" : "");
     div.innerHTML = `<div class="val">${c.val}</div><div class="lbl">${c.lbl}</div>`;
     wrap.appendChild(div);
   });
