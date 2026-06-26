@@ -344,6 +344,20 @@ table.cal thead th.mission-name{
   background:var(--bg-elev2);color:var(--text-dim);border:1px dashed var(--text-faint);
 }
 .sheet-actions{display:flex;gap:8px;margin-top:16px;}
+
+.archive-choice-list{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.archive-choice{
+  display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  width:100%;text-align:left;
+  background:var(--bg-elev2);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;
+}
+.archive-choice:active{background:var(--bg);border-color:var(--gold-dim);}
+.archive-choice-title{
+  font-family:var(--ff-display);font-size:14px;color:var(--gold);
+  letter-spacing:0.01em;
+}
+.archive-choice-sub{font-size:11.5px;color:var(--text-faint);}
 .btn{
   flex:1;padding:11px;border-radius:8px;text-align:center;
   font-family:var(--ff-display);font-size:13px;letter-spacing:0.03em;text-transform:uppercase;
@@ -730,6 +744,29 @@ footer.app-footer{
     <div class="sheet-actions">
       <button class="btn" id="periodCancel">Annuler</button>
       <button class="btn primary" id="periodApply">Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== YEAR CHANGE ARCHIVE PROMPT ===== -->
+<div class="sheet-backdrop" id="yearArchiveSheet">
+  <div class="sheet">
+    <h3>Sauvegarder l'année <span id="yearArchiveOldYear">2026</span> ?</h3>
+    <p class="sub">Tu passes à <span id="yearArchiveNewYear">2027</span> — pense à conserver une copie de <span id="yearArchiveOldYear2">2026</span> avant de continuer</p>
+
+    <div class="archive-choice-list">
+      <button class="archive-choice" id="archiveChoiceDownload">
+        <span class="archive-choice-title">Télécharger sur l'appareil</span>
+        <span class="archive-choice-sub">JSON + Excel dans le dossier Téléchargements</span>
+      </button>
+      <button class="archive-choice" id="archiveChoiceShare">
+        <span class="archive-choice-title">Partager (Mail, Messages, Fichiers…)</span>
+        <span class="archive-choice-sub">Ouvre le menu de partage de ton téléphone</span>
+      </button>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn" id="archiveChoiceSkip">Continuer sans sauvegarder</button>
     </div>
   </div>
 </div>

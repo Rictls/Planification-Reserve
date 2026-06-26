@@ -726,6 +726,8 @@ function setupVacancesAnneeEditor(){
   });
 }
 
+let pendingYearChange = null; // { oldYear, newYear }
+
 function changeYearTo(y){
   if(!y || y<2020 || y>2099 || y===state.year) return;
   const oldYear = state.year;
@@ -735,19 +737,70 @@ function changeYearTo(y){
   });
 
   if(hasEntriesForOldYear){
-    const wantsArchive = confirm(
-      `Tu passes de ${oldYear} à ${y}.\n\nPenses-tu à sauvegarder l'année ${oldYear} en cours ?\n\nOK = archiver ${oldYear} maintenant (JSON + Excel téléchargés), puis basculer sur ${y}.\nAnnuler = basculer sur ${y} sans archiver (tes données ${oldYear} restent dans l'app de toute façon).`
-    );
-    if(wantsArchive){
-      archiveYear(true);
-    }
+    pendingYearChange = { oldYear, newYear: y };
+    openYearArchiveSheet(oldYear, y);
+  }else{
+    applyYearChange(y);
   }
+}
 
+function applyYearChange(y){
   state.year = y;
   saveState();
   document.getElementById("yearDisplay").textContent = y;
   renderCalendar();
   showToast("Année mise à jour : "+y);
+}
+
+function openYearArchiveSheet(oldYear, newYear){
+  document.getElementById("yearArchiveOldYear").textContent = oldYear;
+  document.getElementById("yearArchiveOldYear2").textContent = oldYear;
+  document.getElementById("yearArchiveNewYear").textContent = newYear;
+  document.getElementById("yearArchiveSheet").classList.add("active");
+}
+
+function closeYearArchiveSheet(){
+  document.getElementById("yearArchiveSheet").classList.remove("active");
+}
+
+function setupYearArchivePrompt(){
+  document.getElementById("archiveChoiceDownload").addEventListener("click", ()=>{
+    if(!pendingYearChange) return;
+    const { oldYear, newYear } = pendingYearChange;
+    archiveYear(true, "download");
+    closeYearArchiveSheet();
+    applyYearChange(newYear);
+    pendingYearChange = null;
+  });
+
+  document.getElementById("archiveChoiceShare").addEventListener("click", async ()=>{
+    if(!pendingYearChange) return;
+    const { oldYear, newYear } = pendingYearChange;
+    await archiveYear(true, "share");
+    closeYearArchiveSheet();
+    applyYearChange(newYear);
+    pendingYearChange = null;
+  });
+
+  document.getElementById("archiveChoiceSkip").addEventListener("click", ()=>{
+    if(!pendingYearChange) return;
+    const { newYear } = pendingYearChange;
+    closeYearArchiveSheet();
+    applyYearChange(newYear);
+    pendingYearChange = null;
+  });
+
+  document.getElementById("yearArchiveSheet").addEventListener("click", e=>{
+    if(e.target.id === "yearArchiveSheet"){
+      // tapping the backdrop = same as "continue without saving"
+      if(pendingYearChange){
+        const { newYear } = pendingYearChange;
+        closeYearArchiveSheet();
+        applyYearChange(newYear);
+        pendingYearChange = null;
+      }
+    }
+  });
 }
 
 function setupSettingsActions(){
@@ -1015,6 +1068,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   setupMonthNav();
   setupSheetDismiss();
   setupSettingsActions();
+  setupYearArchivePrompt();
   setupVacancesAnneeEditor();
   setupPeriodEntry();
   setupExportImport();
