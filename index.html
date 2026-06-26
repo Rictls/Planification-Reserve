@@ -622,6 +622,14 @@ footer.app-footer{
 
   <!-- ===== VUE DONNEES (export/import) ===== -->
   <section class="view" id="view-data">
+    <div class="card" style="border-color:var(--gold-dim);">
+      <p class="card-title" style="color:var(--gold);">Archiver l'année <span class="num" id="archiveYearLabel"></span></p>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 14px;">
+        Avant de basculer sur une nouvelle année de référence, archive l'année en cours : un fichier JSON et un fichier Excel sont téléchargés, contenant uniquement les saisies de cette année — une copie figée, indépendante de l'app, à ranger de ton côté (Drive, dossier "Archives"…).
+      </p>
+      <button class="btn primary" id="archiveYearBtn" style="width:100%;">Archiver l'année <span id="archiveYearBtnLabel"></span></button>
+    </div>
+
     <div class="card">
       <p class="card-title">Exporter</p>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 14px;">

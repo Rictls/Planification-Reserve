@@ -10,6 +10,62 @@ function setupExportImport(){
   });
   document.getElementById("importJsonFile").addEventListener("change", handleImportJson);
   document.getElementById("resetYearBtn").addEventListener("click", handleResetYear);
+  document.getElementById("archiveYearBtn").addEventListener("click", archiveYear);
+}
+
+// Builds a snapshot containing only the entries for the currently displayed
+// year (plus the mission list, holidays, and zone settings needed to make
+// sense of them), and downloads it as a clearly-named JSON file — a safe,
+// frozen copy of that year, independent of whatever happens in the app
+// afterwards (switching years, editing missions, clearing the calendar...).
+function buildYearArchivePayload(){
+  const year = state.year;
+  const yearEntries = {};
+  Object.keys(state.entries).forEach(key=>{
+    const iso = key.split("|")[1];
+    if(iso && iso.startsWith(year+"-")) yearEntries[key] = state.entries[key];
+  });
+  return {
+    app: "planning-reserve",
+    version: 1,
+    type: "archive-annuelle",
+    annee: year,
+    exportedAt: new Date().toISOString(),
+    state: {
+      year: year,
+      tarifJournalier: state.tarifJournalier,
+      missions: [...state.missions],
+      feries: state.feries.filter(f=>f.startsWith(year+"-")),
+      recup: state.recup.filter(r=>r.startsWith(year+"-")),
+      vacancesZone: state.vacancesZone,
+      vacancesOverrides: state.vacancesOverrides || {},
+      entries: yearEntries
+    }
+  };
+}
+
+function archiveYear(){
+  const year = state.year;
+  const entryCount = Object.keys(state.entries).filter(k=>{
+    const iso = k.split("|")[1];
+    return iso && iso.startsWith(year+"-");
+  }).length;
+
+  if(!confirm(`Archiver l'année ${year} ? Cela télécharge une sauvegarde JSON ET un export Excel contenant uniquement les ${entryCount} saisies de ${year}, à conserver de ton côté (ces fichiers ne modifient rien dans l'app).`)) return;
+
+  const payload = buildYearArchivePayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  downloadBlob(blob, `archive_${year}.json`);
+
+  // also produce the matching Excel snapshot for this year, reusing the
+  // existing export logic (already scoped to state.year)
+  if(typeof XLSX !== "undefined"){
+    setTimeout(()=>{
+      exportXlsx(`archive_${year}`);
+    }, 400);
+  }
+
+  showToast(`Année ${year} archivée (${entryCount} saisies)`);
 }
 
 function exportJson(){
@@ -80,7 +136,7 @@ function handleResetYear(){
 }
 
 // ---------- Excel export (SheetJS) ----------
-function exportXlsx(){
+function exportXlsx(customFilename){
   if(typeof XLSX === "undefined"){
     showToast("Module Excel non chargé — vérifie ta connexion la première fois");
     return;
@@ -154,6 +210,9 @@ function exportXlsx(){
   const wsFin = XLSX.utils.aoa_to_sheet(finRows);
   XLSX.utils.book_append_sheet(wb, wsFin, "Finances");
 
-  XLSX.writeFile(wb, `planning_reserve_${state.year}_${dateStamp()}.xlsx`);
-  showToast("Export Excel téléchargé");
+  const filename = customFilename
+    ? `${customFilename}.xlsx`
+    : `planning_reserve_${state.year}_${dateStamp()}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  if(!customFilename) showToast("Export Excel téléchargé");
 }

@@ -149,6 +149,10 @@ function setupTabs(){
 function renderCalendarHeader(){
   document.getElementById("yearLabel").textContent = state.year;
   document.getElementById("monthLabel").textContent = MOIS_FR[currentMonthIndex];
+  const archiveLabel = document.getElementById("archiveYearLabel");
+  const archiveBtnLabel = document.getElementById("archiveYearBtnLabel");
+  if(archiveLabel) archiveLabel.textContent = state.year;
+  if(archiveBtnLabel) archiveBtnLabel.textContent = state.year;
 }
 
 function renderCalendarTable(){
