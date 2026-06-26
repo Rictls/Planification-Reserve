@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Planning Réserve</title>
+<script>
+// Applied before first paint to avoid a flash of the wrong theme on load.
+try{
+  var t = localStorage.getItem("planningReserve_theme");
+  if(t === "light") document.documentElement.setAttribute("data-theme","light");
+}catch(e){}
+</script>
+<meta name="theme-color" content="#0E1B2E" id="metaThemeColor">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#0E1B2E;
+  --bg-elev:#152538;
+  --bg-elev2:#1C3049;
+  --line:#2A4360;
+  --gold:#C9A227;
+  --gold-dim:#8A7220;
+  --text:#E8EDF2;
+  --text-dim:#92A3B8;
+  --text-faint:#5C7188;
+  --danger:#D14545;
+  --c-C:#2E7D32;
+  --c-P:#6A4C93;
+  --c-D:#1565C0;
+  --c-V:#0097A7;
+  --c-NR:#B71C1C;
+  --c-X:#EF6C00;
+  --c-OFF:#8D6E63;
+  --bg-weekend:#0A1420;
+  --bg-ferie:#1A1023;
+  --on-gold:#0E1B2E;
+  --bg-fade:rgba(14,27,46,0.85);
+  --radius:10px;
+  --ff-display:'Oswald',-apple-system,sans-serif;
+  --ff-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --ff-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+
+/* ===== THEME CLAIR — haute lisibilité plein soleil / extérieur ===== */
+[data-theme="light"]{
+  --bg:#F7F5F0;
+  --bg-elev:#FFFFFF;
+  --bg-elev2:#EAE7DD;
+  --line:#C7C2B4;
+  --gold:#8A6300;
+  --gold-dim:#B89230;
+  --text:#10141A;
+  --text-dim:#3B3F46;
+  --text-faint:#6B6F76;
+  --danger:#A3170A;
+  --c-C:#1B5E20;
+  --c-P:#4A148C;
+  --c-D:#0D47A1;
+  --c-V:#00666E;
+  --c-NR:#8E0000;
+  --c-X:#B85400;
+  --c-OFF:#5D4037;
+  --bg-weekend:#ECE8DC;
+  --bg-ferie:#E9DCEA;
+  --on-gold:#FFFFFF;
+  --bg-fade:rgba(247,245,240,0.85);
+}
+[data-theme="light"] .vacances-cell.vacances-on{
+  background:repeating-linear-gradient(45deg,#B85400,#B85400 4px,#9C4600 4px,#9C4600 8px);
+}
+[data-theme="light"] .vacances-cell.weekend.vacances-on{
+  background:repeating-linear-gradient(45deg,#9C4600,#9C4600 4px,#823900 4px,#823900 8px);
+}
+[data-theme="light"] ::selection{color:#fff;}
+[data-theme="light"] .day-cell .pill{color:#fff;}
+[data-theme="light"] .status-btn{color:#fff;}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--ff-body);transition:background .15s,color .15s;}
+body{
+  padding-bottom:env(safe-area-inset-bottom);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--gold);color:var(--on-gold);}
+a{color:var(--gold);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+input,select{font-family:inherit;}
+
+/* ===== THEME TOGGLE BUTTON ===== */
+.theme-toggle{
+  width:34px;height:34px;border-radius:8px;
+  background:var(--bg-elev2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex:none;
+}
+.theme-toggle:active{opacity:0.7;}
+
+/* ===== HEADER ===== */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:linear-gradient(180deg,var(--bg) 70%, var(--bg-fade));
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+  padding:14px 16px 10px;
+}
+.brand{
+  display:flex;align-items:baseline;gap:10px;
+}
+.brand .mark{
+  font-family:var(--ff-display);
+  font-weight:600;
+  letter-spacing:0.04em;
+  font-size:11px;
+  color:var(--gold);
+  text-transform:uppercase;
+  border:1px solid var(--gold-dim);
+  border-radius:4px;
+  padding:2px 6px;
+}
+.brand h1{
+  font-family:var(--ff-display);
+  font-weight:500;
+  font-size:20px;
+  letter-spacing:0.01em;
+  margin:0;
+  color:var(--text);
+}
+.brand .year{color:var(--text-faint);font-family:var(--ff-mono);font-size:14px;margin-left:auto;}
+
+.tabs{
+  display:flex;gap:4px;margin-top:12px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{
+  font-family:var(--ff-display);
+  font-size:13px;letter-spacing:0.03em;text-transform:uppercase;
+  padding:8px 14px;border-radius:8px 8px 0 0;
+  color:var(--text-dim);white-space:nowrap;
+  border-bottom:2px solid transparent;
+  transition:color .15s;
+}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab:active{opacity:0.7;}
+
+main{padding:16px;max-width:1100px;margin:0 auto;}
+.view{display:none;}
+.view.active{display:block;animation:fadein .2s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ===== CARDS ===== */
+.card{
+  background:var(--bg-elev);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px;
+  margin-bottom:14px;
+}
+.card-title{
+  font-family:var(--ff-display);
+  font-size:13px;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--text-faint);margin:0 0 10px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-title .num{
+  font-family:var(--ff-mono);color:var(--gold);font-size:12px;
+}
+
+/* ===== MONTH NAV ===== */
+.month-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.month-nav button{
+  width:36px;height:36px;border-radius:8px;
+  background:var(--bg-elev);border:1px solid var(--line);
+  color:var(--gold);font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.month-nav button:active{background:var(--bg-elev2);}
+.month-label{
+  font-family:var(--ff-display);font-size:18px;letter-spacing:0.02em;
+  text-transform:uppercase;color:var(--text);
+}
+
+/* ===== CALENDAR GRID ===== */
+.cal-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--line);}
+table.cal{
+  border-collapse:collapse;width:100%;min-width:760px;
+  font-size:12px;
+}
+table.cal th,table.cal td{
+  border:1px solid var(--line);
+  padding:0;
+  text-align:center;
+}
+table.cal thead th{
+  background:var(--bg-elev2);
+  font-family:var(--ff-mono);
+  font-weight:500;
+  font-size:11px;
+  color:var(--text-dim);
+  padding:6px 2px;
+  position:sticky;top:0;
+}
+table.cal thead th.weekend{color:var(--gold-dim);}
+.mission-name{
+  text-align:left !important;
+  font-size:11.5px;
+  padding:6px 8px !important;
+  color:var(--text);
+  background:var(--bg-elev);
+  white-space:nowrap;
+  position:sticky;left:0;
+  max-width:140px;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.day-cell{
+  width:26px;height:30px;
+  cursor:pointer;
+  position:relative;
+  background:var(--bg);
+  transition:background .1s;
+}
+.day-cell:hover{background:var(--bg-elev2);}
+.day-cell.weekend{background:var(--bg-weekend);}
+.day-cell.ferie{background:var(--bg-ferie);}
+.day-cell .pill{
+  font-family:var(--ff-mono);
+  font-weight:600;font-size:10px;
+  border-radius:4px;
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;
+}
+.daynum-row th{
+  font-family:var(--ff-mono);font-size:10px;color:var(--text-faint);
+  padding:3px 0 !important;background:var(--bg-elev);
+}
+.daynum-row th.weekend{color:var(--gold-dim);}
+.daynum-row th.ferie{color:var(--danger);}
+
+/* ===== VACANCES SCOLAIRES INFO BAND ===== */
+.vacances-label{
+  font-size:11.5px !important;
+  font-weight:600;
+  color:var(--gold-dim) !important;
+  font-family:var(--ff-display);
+  text-transform:uppercase;
+  letter-spacing:0.02em;
+  border-bottom:1px solid var(--line);
+}
+.vacances-cell{
+  cursor:default !important;
+  height:16px !important;
+  border-bottom:1px solid var(--line);
+  background:var(--bg-elev);
+}
+.vacances-cell:hover{background:var(--bg-elev);}
+.vacances-cell.vacances-on{
+  background:repeating-linear-gradient(
+    45deg,
+    #EF6C00, #EF6C00 4px,
+    #d9620a 4px, #d9620a 8px
+  );
+}
+.vacances-cell.weekend.vacances-on{
+  background:repeating-linear-gradient(
+    45deg,
+    #c95f00, #c95f00 4px,
+    #b85700 4px, #b85700 8px
+  );
+}
+
+/* ===== LEGEND ===== */
+.legend-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.legend-chip{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;color:var(--text-dim);
+  background:var(--bg-elev2);border-radius:20px;padding:4px 10px 4px 6px;
+}
+.legend-chip .dot{width:14px;height:14px;border-radius:4px;flex:none;}
+
+/* ===== STATUS PICKER (modal) ===== */
+.sheet-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.55);
+  z-index:100;display:none;align-items:flex-end;justify-content:center;
+}
+.sheet-backdrop.active{display:flex;}
+.sheet{
+  background:var(--bg-elev);
+  border-radius:16px 16px 0 0;
+  border-top:1px solid var(--line);
+  width:100%;max-width:480px;
+  padding:18px 18px max(18px, env(safe-area-inset-bottom));
+  animation:slideup .2s ease;
+}
+@media (min-width:600px){
+  .sheet-backdrop{align-items:center;}
+  .sheet{border-radius:16px;}
+}
+@keyframes slideup{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.sheet h3{
+  font-family:var(--ff-display);font-size:15px;letter-spacing:0.02em;
+  margin:0 0 4px;color:var(--text);text-transform:uppercase;
+}
+.sheet .sub{color:var(--text-faint);font-size:12px;margin-bottom:16px;font-family:var(--ff-mono);}
+.status-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.status-btn{
+  border-radius:10px;padding:14px 4px;
+  font-family:var(--ff-display);font-size:12px;letter-spacing:0.02em;
+  color:#fff;text-align:center;
+  border:2px solid transparent;
+}
+.status-btn.selected{border-color:var(--gold);}
+.status-btn.clear{
+  background:var(--bg-elev2);color:var(--text-dim);border:1px dashed var(--text-faint);
+}
+.sheet-actions{display:flex;gap:8px;margin-top:16px;}
+.btn{
+  flex:1;padding:11px;border-radius:8px;text-align:center;
+  font-family:var(--ff-display);font-size:13px;letter-spacing:0.03em;text-transform:uppercase;
+  background:var(--bg-elev2);color:var(--text-dim);border:1px solid var(--line);
+}
+.btn.primary{background:var(--gold);color:var(--on-gold);border-color:var(--gold);}
+.btn:active{opacity:0.75;}
+
+/* ===== SYNTHESIS TABLE ===== */
+table.synth{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.synth th,table.synth td{
+  padding:8px 6px;text-align:right;border-bottom:1px solid var(--line);
+}
+table.synth th{
+  font-family:var(--ff-mono);font-size:10.5px;color:var(--text-faint);
+  text-transform:uppercase;font-weight:500;
+}
+table.synth td:first-child,table.synth th:first-child{text-align:left;color:var(--text);}
+table.synth tr:last-child td{font-weight:600;color:var(--gold);border-bottom:none;border-top:1px solid var(--gold-dim);}
+table.synth tbody tr:active{background:var(--bg-elev2);}
+
+.stat-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+@media(min-width:520px){.stat-cards{grid-template-columns:repeat(5,1fr);}}
+.stat-card{
+  background:var(--bg-elev);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px;text-align:center;
+}
+.stat-card .val{font-family:var(--ff-display);font-size:26px;color:var(--gold);}
+.stat-card .lbl{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+
+/* ===== VACANCES SCOLAIRES — settings ===== */
+.vacances-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-family:var(--ff-mono);
+  padding:4px 10px;border-radius:20px;margin:8px 0 0;
+}
+.vacances-badge.officielle{background:rgba(46,125,50,0.18);color:#6FCF73;border:1px solid rgba(111,207,115,0.3);}
+.vacances-badge.estimee{background:rgba(239,108,0,0.15);color:#EF6C00;border:1px solid rgba(239,108,0,0.35);}
+.periode-row{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg-elev2);border-radius:8px;padding:8px 10px;
+}
+.periode-row .periode-label{
+  flex:none;width:96px;font-size:11.5px;color:var(--text-dim);
+  font-family:var(--ff-mono);
+}
+.periode-row input[type="date"]{
+  flex:1;min-width:0;background:transparent;border:none;color:var(--text);
+  font-size:12.5px;outline:none;
+}
+
+/* ===== MISSIONS LIST (settings) ===== */
+.mission-list{display:flex;flex-direction:column;gap:6px;}
+.mission-row{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg-elev2);border-radius:8px;padding:8px 10px;
+}
+.mission-row input{
+  flex:1;background:transparent;border:none;color:var(--text);font-size:13px;outline:none;
+}
+.mission-row .delete-btn{color:var(--danger);font-size:13px;padding:4px;flex:none;}
+.reorder-btns{display:flex;flex-direction:column;gap:2px;flex:none;}
+.reorder-btn{
+  color:var(--text-faint);font-size:9px;line-height:1;
+  padding:3px 6px;background:var(--bg-elev);border-radius:4px;
+}
+.reorder-btn:active{background:var(--bg);color:var(--gold);}
+.reorder-btn:disabled{opacity:0.25;pointer-events:none;}
+.add-mission{
+  display:flex;gap:8px;margin-top:10px;
+}
+.add-mission input{
+  flex:1;background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+  padding:9px 10px;color:var(--text);font-size:13px;outline:none;
+}
+.add-mission input:focus{border-color:var(--gold-dim);}
+.add-mission button{
+  background:var(--gold);color:var(--on-gold);border-radius:8px;padding:9px 16px;
+  font-family:var(--ff-display);font-size:12px;text-transform:uppercase;letter-spacing:0.03em;
+}
+
+.field-row{margin-bottom:12px;}
+.field-row label{
+  display:block;font-size:11px;color:var(--text-faint);text-transform:uppercase;
+  letter-spacing:0.04em;margin-bottom:5px;font-family:var(--ff-mono);
+}
+.field-row input{
+  width:100%;background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+  padding:10px;color:var(--text);font-size:14px;outline:none;
+}
+.field-row input:focus{border-color:var(--gold-dim);}
+
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+.btn-period{
+  width:100%;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--bg-elev);border:1px dashed var(--gold-dim);
+  color:var(--gold);border-radius:var(--radius);
+  padding:11px;margin-bottom:14px;
+  font-family:var(--ff-display);font-size:13px;letter-spacing:0.03em;text-transform:uppercase;
+}
+.btn-period:active{background:var(--bg-elev2);}
+.btn-period .icon{font-size:14px;}
+
+.field-row select{
+  width:100%;background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+  padding:10px;color:var(--text);font-size:14px;outline:none;
+  font-family:var(--ff-body);
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2392A3B8'%3E%3Cpath d='M5.5 7.5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+.field-row select:focus{border-color:var(--gold-dim);}
+
+.period-status-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
+.period-summary{
+  background:var(--bg-elev2);border-radius:8px;padding:10px 12px;margin-top:14px;
+  font-size:12.5px;color:var(--text-dim);
+}
+.period-summary strong{color:var(--gold);}
+.period-summary.warn{color:var(--danger);}
+
+.scope-toggle{
+  display:flex;align-items:center;gap:10px;
+  margin:10px 0 16px;padding:10px 12px;
+  background:var(--bg-elev2);border-radius:8px;border:1px solid var(--gold-dim);
+  font-size:12.5px;color:var(--text-dim);
+  cursor:pointer;
+}
+.scope-toggle input{
+  width:18px;height:18px;accent-color:var(--gold);flex:none;cursor:pointer;
+}
+.scope-toggle.disabled{opacity:0.45;pointer-events:none;border-color:var(--line);}
+
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--bg-elev2);border:1px solid var(--gold-dim);color:var(--text);
+  padding:10px 18px;border-radius:30px;font-size:13px;z-index:200;
+  opacity:0;transition:all .25s ease;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.empty{
+  text-align:center;padding:30px 10px;color:var(--text-faint);font-size:13px;
+}
+
+footer.app-footer{
+  text-align:center;padding:20px;color:var(--text-faint);font-size:11px;font-family:var(--ff-mono);
+}
+
+/* file inputs hidden */
+.file-hidden{display:none;}
+
+@media(max-width:480px){
+  .brand h1{font-size:17px;}
+  main{padding:12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="mark">RÉS.</span>
+    <h1>Planning Réserve</h1>
+    <span class="year" id="yearLabel">2026</span>
+    <button class="theme-toggle" id="themeToggleBtn" aria-label="Changer de thème" title="Mode jour / nuit">☀</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-view="calendar">Calendrier</button>
+    <button class="tab" data-view="synthesis">Synthèse</button>
+    <button class="tab" data-view="settings">Réglages</button>
+    <button class="tab" data-view="data">Données</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- ===== VUE CALENDRIER ===== -->
+  <section class="view active" id="view-calendar">
+    <div class="month-nav">
+      <button id="prevMonth" aria-label="Mois précédent">‹</button>
+      <div class="month-label" id="monthLabel">JANVIER</div>
+      <button id="nextMonth" aria-label="Mois suivant">›</button>
+    </div>
+
+    <button class="btn-period" id="openPeriodBtn">
+      <span class="icon">▤</span> Saisir une période
+    </button>
+
+    <div class="cal-wrap">
+      <table class="cal" id="calTable"></table>
+    </div>
+
+    <div class="legend-row" id="legendRow"></div>
+  </section>
+
+  <!-- ===== VUE SYNTHESE ===== -->
+  <section class="view" id="view-synthesis">
+    <div class="stat-cards" id="statCards"></div>
+
+    <div class="card">
+      <p class="card-title">Synthèse par mission <span class="num" id="synthYear"></span></p>
+      <div style="overflow-x:auto;">
+        <table class="synth" id="synthTable"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Solde financier mensuel</p>
+      <div style="overflow-x:auto;">
+        <table class="synth" id="financeTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== VUE REGLAGES ===== -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <p class="card-title">Année de référence</p>
+      <div class="field-row">
+        <label>Année</label>
+        <input type="number" id="yearInput" value="2026" min="2020" max="2099">
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Vacances scolaires</p>
+      <div class="field-row">
+        <label>Zone académique</label>
+        <select id="vacancesZoneInput">
+          <option value="A">Zone A — Besançon, Bordeaux, Clermont-Ferrand, Dijon, Grenoble, Limoges, Lyon, Poitiers</option>
+          <option value="B">Zone B — Aix-Marseille, Amiens, Lille, Nancy-Metz, Nantes, Nice, Normandie, Orléans-Tours, Reims, Rennes, Strasbourg</option>
+          <option value="C">Zone C — Créteil, Montpellier, Paris, Toulouse, Versailles</option>
+        </select>
+      </div>
+      <p style="color:var(--text-faint);font-size:11.5px;margin:8px 0 0;">
+        Affichage automatique sur la bande "Vacances scol." du calendrier, à titre informatif uniquement.
+      </p>
+
+      <div class="field-row" style="margin-top:16px;">
+        <label>Consulter / corriger une année scolaire</label>
+        <select id="vacancesAnneeInput"></select>
+      </div>
+      <div id="vacancesAnneeBadge"></div>
+      <div class="mission-list" id="vacancesPeriodesList" style="margin-top:10px;"></div>
+      <div class="sheet-actions" style="margin-top:12px;">
+        <button class="btn" id="vacancesResetBtn">Réinitialiser cette année</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Tarif journalier</p>
+      <div class="field-row">
+        <label>Montant (€ / jour)</label>
+        <input type="number" id="tarifInput" value="84.2" step="0.1">
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Missions</p>
+      <div class="mission-list" id="missionList"></div>
+      <div class="add-mission">
+        <input type="text" id="newMissionInput" placeholder="Nouvelle mission…">
+        <button id="addMissionBtn">Ajouter</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Jours fériés (<span id="ferieCount"></span>)</p>
+      <div class="mission-list" id="ferieList"></div>
+      <div class="add-mission">
+        <input type="date" id="newFerieInput">
+        <button id="addFerieBtn">Ajouter</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Jours de récupération</p>
+      <div class="mission-list" id="recupList"></div>
+      <div class="add-mission">
+        <input type="date" id="newRecupInput">
+        <button id="addRecupBtn">Ajouter</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== VUE DONNEES (export/import) ===== -->
+  <section class="view" id="view-data">
+    <div class="card">
+      <p class="card-title">Exporter</p>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 14px;">
+        Sauvegarde complète de tes données (missions, statuts, réglages) — à conserver ou réimporter sur un autre appareil.
+      </p>
+      <div class="sheet-actions" style="margin-top:0;">
+        <button class="btn primary" id="exportJsonBtn">Export JSON</button>
+        <button class="btn primary" id="exportXlsxBtn">Export Excel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Importer</p>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 14px;">
+        Réimporte une sauvegarde JSON précédente. Cela remplace les données actuelles de l'application.
+      </p>
+      <button class="btn" id="importJsonBtn" style="width:100%;">Choisir un fichier JSON…</button>
+      <input type="file" id="importJsonFile" class="file-hidden" accept="application/json">
+    </div>
+
+    <div class="card">
+      <p class="card-title">Réinitialiser</p>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 14px;">
+        Efface toutes les saisies de l'année affichée (statuts du calendrier). Les missions et réglages sont conservés.
+      </p>
+      <button class="btn" id="resetYearBtn" style="width:100%;color:var(--danger);border-color:var(--danger);">Vider le calendrier de l'année</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">PLANNING RÉSERVE — HORS LIGNE — V1.0</footer>
+
+<!-- ===== STATUS PICKER SHEET ===== -->
+<div class="sheet-backdrop" id="statusSheet">
+  <div class="sheet">
+    <h3 id="sheetMissionName">Mission</h3>
+    <p class="sub" id="sheetDateLabel">jour</p>
+    <label class="scope-toggle" id="scopeToggleRow">
+      <input type="checkbox" id="scopeToggle">
+      <span id="scopeToggleLabel">Appliquer à toute la période</span>
+    </label>
+    <div class="status-grid" id="statusGrid"></div>
+    <div class="sheet-actions">
+      <button class="btn" id="sheetCancel">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PERIOD ENTRY SHEET ===== -->
+<div class="sheet-backdrop" id="periodSheet">
+  <div class="sheet">
+    <h3>Saisir une période</h3>
+    <p class="sub" id="periodSubLabel">Applique un statut à une plage de jours — tape le nom d'une nouvelle mission pour la créer directement</p>
+
+    <div class="field-row">
+      <label>Mission</label>
+      <input type="text" id="periodMission" list="periodMissionList" placeholder="Choisis ou tape un nouveau nom…" autocomplete="off">
+      <datalist id="periodMissionList"></datalist>
+    </div>
+
+    <div class="row-2">
+      <div class="field-row">
+        <label>Du</label>
+        <input type="date" id="periodStart">
+      </div>
+      <div class="field-row">
+        <label>Au</label>
+        <input type="date" id="periodEnd">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Statut à appliquer</label>
+      <div class="period-status-grid" id="periodStatusGrid"></div>
+    </div>
+
+    <div class="period-summary" id="periodSummary">Choisis une mission et une plage de dates.</div>
+
+    <div class="sheet-actions">
+      <button class="btn" id="periodCancel">Annuler</button>
+      <button class="btn primary" id="periodApply">Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="xlsx.full.min.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="export.js"></script>
+</body>
+</html>
