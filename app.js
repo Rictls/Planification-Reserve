@@ -202,7 +202,7 @@ function renderCalendarTable(){
   const tdVacLabel = document.createElement("td");
   tdVacLabel.className = "mission-name vacances-label";
   const zoneActuelle = state.vacancesZone || VACANCES_ZONE_DEFAULT;
-  tdVacLabel.textContent = `Vacances scol. (${zoneActuelle})`;
+  tdVacLabel.textContent = `Vac. scol. (${zoneActuelle})`;
   tdVacLabel.title = `Zone ${zoneActuelle}`;
   rowVac.appendChild(tdVacLabel);
   for(let d=1; d<=nbDays; d++){
