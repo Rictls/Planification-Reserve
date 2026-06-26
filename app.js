@@ -402,12 +402,12 @@ function renderStatCards(){
   });
   const totalConvocations = totalC + totalP;
   const cards = [
-    { val: totalC, lbl: "Convoqué (en attente)" },
-    { val: totalP, lbl: "Payé" },
-    { val: totalV, lbl: "Volontaire" },
-    { val: totalNR, lbl: "Non retenu" },
     { val: totalConvocations, lbl: "Total convocations", highlight: true },
-    { val: totalAll, lbl: "Total saisies" }
+    { val: totalAll, lbl: "Total saisies" },
+    { val: totalP, lbl: "Payé" },
+    { val: totalNR, lbl: "Non retenu" },
+    { val: totalC, lbl: "Convoqué (en attente)" },
+    { val: totalV, lbl: "Volontaire" }
   ];
   cards.forEach(c=>{
     const div = document.createElement("div");
