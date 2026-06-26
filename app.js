@@ -506,7 +506,7 @@ function renderSynthesis(){
 // RENDER: SETTINGS
 // ============================================================
 function renderSettings(){
-  document.getElementById("yearInput").value = state.year;
+  document.getElementById("yearDisplay").textContent = state.year;
   document.getElementById("tarifInput").value = state.tarifJournalier;
   document.getElementById("vacancesZoneInput").value = state.vacancesZone || VACANCES_ZONE_DEFAULT;
 
@@ -726,16 +726,33 @@ function setupVacancesAnneeEditor(){
   });
 }
 
-function setupSettingsActions(){
-  document.getElementById("yearInput").addEventListener("change", e=>{
-    const y = parseInt(e.target.value,10);
-    if(y && y>=2020 && y<=2099){
-      state.year = y;
-      saveState();
-      renderCalendar();
-      showToast("Année mise à jour : "+y);
-    }
+function changeYearTo(y){
+  if(!y || y<2020 || y>2099 || y===state.year) return;
+  const oldYear = state.year;
+  const hasEntriesForOldYear = Object.keys(state.entries).some(k=>{
+    const iso = k.split("|")[1];
+    return iso && iso.startsWith(oldYear+"-");
   });
+
+  if(hasEntriesForOldYear){
+    const wantsArchive = confirm(
+      `Tu passes de ${oldYear} à ${y}.\n\nPenses-tu à sauvegarder l'année ${oldYear} en cours ?\n\nOK = archiver ${oldYear} maintenant (JSON + Excel téléchargés), puis basculer sur ${y}.\nAnnuler = basculer sur ${y} sans archiver (tes données ${oldYear} restent dans l'app de toute façon).`
+    );
+    if(wantsArchive){
+      archiveYear(true);
+    }
+  }
+
+  state.year = y;
+  saveState();
+  document.getElementById("yearDisplay").textContent = y;
+  renderCalendar();
+  showToast("Année mise à jour : "+y);
+}
+
+function setupSettingsActions(){
+  document.getElementById("yearPrevBtn").addEventListener("click", ()=> changeYearTo(state.year-1));
+  document.getElementById("yearNextBtn").addEventListener("click", ()=> changeYearTo(state.year+1));
   document.getElementById("vacancesZoneInput").addEventListener("change", e=>{
     state.vacancesZone = e.target.value;
     saveState();
