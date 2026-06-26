@@ -44,28 +44,89 @@ function buildYearArchivePayload(){
   };
 }
 
-function archiveYear(){
+async function archiveYear(skipConfirm, mode){
   const year = state.year;
   const entryCount = Object.keys(state.entries).filter(k=>{
     const iso = k.split("|")[1];
     return iso && iso.startsWith(year+"-");
   }).length;
 
-  if(!confirm(`Archiver l'année ${year} ? Cela télécharge une sauvegarde JSON ET un export Excel contenant uniquement les ${entryCount} saisies de ${year}, à conserver de ton côté (ces fichiers ne modifient rien dans l'app).`)) return;
+  if(!skipConfirm){
+    if(!confirm(`Archiver l'année ${year} ? Cela télécharge une sauvegarde JSON ET un export Excel contenant uniquement les ${entryCount} saisies de ${year}, à conserver de ton côté (ces fichiers ne modifient rien dans l'app).`)) return;
+  }
 
   const payload = buildYearArchivePayload();
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  downloadBlob(blob, `archive_${year}.json`);
+  const jsonBlob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const jsonFilename = `archive_${year}.json`;
 
-  // also produce the matching Excel snapshot for this year, reusing the
-  // existing export logic (already scoped to state.year)
+  if(mode === "share"){
+    const shared = await shareArchiveFiles(year, jsonBlob, jsonFilename);
+    if(shared){
+      showToast(`Année ${year} partagée (${entryCount} saisies)`);
+      return;
+    }
+    // fall through to download if sharing isn't supported or was cancelled
+  }
+
+  downloadBlob(jsonBlob, jsonFilename);
   if(typeof XLSX !== "undefined"){
     setTimeout(()=>{
       exportXlsx(`archive_${year}`);
     }, 400);
   }
-
   showToast(`Année ${year} archivée (${entryCount} saisies)`);
+}
+
+// Tries to hand the archive files to the OS-level share sheet (Mail,
+// Messages, Files, WhatsApp, etc. all appear there automatically on phones).
+// Returns true if the native share UI was actually shown, false if the
+// browser doesn't support sharing files — callers should fall back to a
+// normal download in that case.
+async function shareArchiveFiles(year, jsonBlob, jsonFilename){
+  if(!navigator.share || !navigator.canShare){
+    showToast("Partage non disponible sur ce navigateur — téléchargement classique utilisé");
+    return false;
+  }
+  try{
+    const jsonFile = new File([jsonBlob], jsonFilename, { type: "application/json" });
+    const files = [jsonFile];
+
+    if(typeof XLSX !== "undefined"){
+      const xlsxBlob = buildXlsxBlob();
+      const xlsxFile = new File([xlsxBlob], `archive_${year}.xlsx`, {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+      files.push(xlsxFile);
+    }
+
+    const shareData = {
+      files,
+      title: `Archive Planning Réserve ${year}`,
+      text: `Sauvegarde du planning réserve — année ${year}`
+    };
+
+    if(!navigator.canShare(shareData)){
+      // some browsers can share a single file but not two at once — retry with JSON only
+      const singleFileData = { files: [jsonFile], title: shareData.title, text: shareData.text };
+      if(!navigator.canShare(singleFileData)){
+        showToast("Ce navigateur ne permet pas de partager ces fichiers — téléchargement classique utilisé");
+        return false;
+      }
+      await navigator.share(singleFileData);
+      return true;
+    }
+
+    await navigator.share(shareData);
+    return true;
+  }catch(err){
+    if(err && err.name === "AbortError"){
+      // person closed the share sheet without picking anything — not an error
+      return true;
+    }
+    console.error("Partage impossible", err);
+    showToast("Partage impossible — téléchargement classique utilisé");
+    return false;
+  }
 }
 
 function exportJson(){
@@ -136,11 +197,7 @@ function handleResetYear(){
 }
 
 // ---------- Excel export (SheetJS) ----------
-function exportXlsx(customFilename){
-  if(typeof XLSX === "undefined"){
-    showToast("Module Excel non chargé — vérifie ta connexion la première fois");
-    return;
-  }
+function buildWorkbook(){
   const wb = XLSX.utils.book_new();
 
   // --- Sheet "Synthèse" ---
@@ -210,9 +267,26 @@ function exportXlsx(customFilename){
   const wsFin = XLSX.utils.aoa_to_sheet(finRows);
   XLSX.utils.book_append_sheet(wb, wsFin, "Finances");
 
+  return wb;
+}
+
+function exportXlsx(customFilename){
+  if(typeof XLSX === "undefined"){
+    showToast("Module Excel non chargé — vérifie ta connexion la première fois");
+    return;
+  }
+  const wb = buildWorkbook();
   const filename = customFilename
     ? `${customFilename}.xlsx`
     : `planning_reserve_${state.year}_${dateStamp()}.xlsx`;
   XLSX.writeFile(wb, filename);
   if(!customFilename) showToast("Export Excel téléchargé");
+}
+
+// Builds the same workbook as exportXlsx but returns it as a Blob instead of
+// triggering a direct download — used when sharing via the native share sheet.
+function buildXlsxBlob(){
+  const wb = buildWorkbook();
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  return new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
