@@ -893,17 +893,69 @@ function setupPeriodEntry(){
   document.getElementById("periodSheet").addEventListener("click", e=>{
     if(e.target.id === "periodSheet") closePeriodSheet();
   });
-  document.getElementById("periodMission").addEventListener("input", updatePeriodSummary);
+
+  const missionInput = document.getElementById("periodMission");
+  missionInput.addEventListener("input", e=>{
+    updatePeriodSummary();
+    openMissionDropdown();
+    renderMissionDropdown(e.target.value);
+  });
+  missionInput.addEventListener("focus", ()=> openMissionDropdown());
+
+  document.getElementById("periodMissionToggle").addEventListener("click", e=>{
+    e.stopPropagation();
+    e.preventDefault();
+    missionInput.focus();
+    openMissionDropdown();
+  });
+
+  // close the dropdown when tapping anywhere outside the combo box
+  document.addEventListener("click", e=>{
+    const combo = document.querySelector(".mission-combo");
+    if(combo && !combo.contains(e.target)) closeMissionDropdown();
+  });
+
+  document.getElementById("periodStart").addEventListener("focus", closeMissionDropdown);
+  document.getElementById("periodEnd").addEventListener("focus", closeMissionDropdown);
   document.getElementById("periodStart").addEventListener("change", updatePeriodSummary);
   document.getElementById("periodEnd").addEventListener("change", updatePeriodSummary);
   document.getElementById("periodApply").addEventListener("click", applyPeriodEntry);
 }
 
+function renderMissionDropdown(filterText){
+  const dropdown = document.getElementById("periodMissionDropdown");
+  const filter = (filterText || "").trim().toLowerCase();
+  const matches = filter
+    ? state.missions.filter(m => m.toLowerCase().includes(filter))
+    : state.missions;
+
+  if(matches.length === 0){
+    dropdown.innerHTML = `<div class="mission-combo-item" style="color:var(--text-faint);">Aucune mission existante ne correspond</div>`;
+    return;
+  }
+  dropdown.innerHTML = matches.map(m=>
+    `<button type="button" class="mission-combo-item" data-mission="${m.replace(/"/g,'&quot;')}">${m}</button>`
+  ).join("");
+  dropdown.querySelectorAll(".mission-combo-item[data-mission]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.getElementById("periodMission").value = btn.dataset.mission;
+      closeMissionDropdown();
+      updatePeriodSummary();
+    });
+  });
+}
+
+function openMissionDropdown(){
+  renderMissionDropdown(document.getElementById("periodMission").value);
+  document.getElementById("periodMissionDropdown").classList.add("open");
+}
+function closeMissionDropdown(){
+  document.getElementById("periodMissionDropdown").classList.remove("open");
+}
+
 function openPeriodSheet(){
-  // populate datalist with existing missions (input stays free-text)
-  const list = document.getElementById("periodMissionList");
-  list.innerHTML = state.missions.map(m=>`<option value="${m.replace(/"/g,'&quot;')}">`).join("");
   document.getElementById("periodMission").value = "";
+  closeMissionDropdown();
 
   // default dates: current visible month, day 1 to last day
   const y = state.year, m = currentMonthIndex;
