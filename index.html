@@ -478,6 +478,37 @@ table.synth tbody tr:active{background:var(--bg-elev2);}
 }
 .field-row select:focus{border-color:var(--gold-dim);}
 
+/* ===== MISSION COMBO (period entry) — custom dropdown, iOS-safe ===== */
+.mission-combo{position:relative;}
+.mission-combo input{
+  width:100%;background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+  padding:10px 38px 10px 10px;color:var(--text);font-size:14px;outline:none;
+  box-sizing:border-box;
+}
+.mission-combo input:focus{border-color:var(--gold-dim);}
+.mission-combo-toggle,
+#periodMissionToggle{
+  position:absolute;right:4px;top:4px;bottom:4px;width:32px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-faint);font-size:12px;border-radius:6px;
+}
+#periodMissionToggle:active{background:var(--bg);}
+.mission-combo-list{
+  display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);
+  max-height:200px;overflow-y:auto;
+  background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+  z-index:20;
+  box-shadow:0 4px 12px rgba(0,0,0,0.25);
+}
+.mission-combo-list.open{display:block;}
+.mission-combo-item{
+  display:block;width:100%;text-align:left;
+  padding:10px 12px;font-size:13.5px;color:var(--text);
+  border-bottom:1px solid var(--line);
+}
+.mission-combo-item:last-child{border-bottom:none;}
+.mission-combo-item:active{background:var(--bg);}
+
 .period-status-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
 .period-summary{
   background:var(--bg-elev2);border-radius:8px;padding:10px 12px;margin-top:14px;
@@ -719,8 +750,11 @@ footer.app-footer{
 
     <div class="field-row">
       <label>Mission</label>
-      <input type="text" id="periodMission" list="periodMissionList" placeholder="Choisis ou tape un nouveau nom…" autocomplete="off">
-      <datalist id="periodMissionList"></datalist>
+      <div class="mission-combo">
+        <input type="text" id="periodMission" placeholder="Choisis ou tape un nouveau nom…" autocomplete="off">
+        <button type="button" id="periodMissionToggle" aria-label="Voir les missions existantes">▾</button>
+        <div class="mission-combo-list" id="periodMissionDropdown"></div>
+      </div>
     </div>
 
     <div class="row-2">
