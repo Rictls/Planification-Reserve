@@ -259,16 +259,12 @@ function renderCalendarTable(){
 function renderLegend(){
   const row = document.getElementById("legendRow");
   row.innerHTML = "";
-  STATUTS.filter(s=>s.code !== "X").forEach(s=>{
+  STATUTS.forEach(s=>{
     const chip = document.createElement("div");
     chip.className = "legend-chip";
     chip.innerHTML = `<span class="dot" style="background:var(--c-${s.code})"></span>${s.code} — ${s.label}`;
     row.appendChild(chip);
   });
-  const chipFerie = document.createElement("div");
-  chipFerie.className = "legend-chip";
-  chipFerie.innerHTML = `<span class="dot" style="background:#3a1f4d"></span>Jour férié`;
-  row.appendChild(chipFerie);
 }
 
 function renderCalendar(){
@@ -966,7 +962,7 @@ function openPeriodSheet(){
   periodSelectedStatus = null;
   const grid = document.getElementById("periodStatusGrid");
   grid.innerHTML = "";
-  STATUTS.forEach(s=>{
+  STATUTS.filter(s=>s.code !== "OFF").forEach(s=>{
     const btn = document.createElement("button");
     btn.className = "status-btn";
     btn.style.background = `var(--c-${s.code})`;
@@ -1035,18 +1031,18 @@ function updatePeriodSummary(){
     return;
   }
 
+  const actionLabel = periodSelectedStatus === "__CLEAR__"
+    ? "effacer le statut de"
+    : periodSelectedStatus
+      ? `appliquer le statut "${periodSelectedStatus}" à`
+      : "appliquer un statut à (choisis un statut ci-dessus pour)";
+
   const isNewMission = !state.missions.includes(mission);
 
   let existing = 0;
   dates.forEach(iso=>{
     if(state.entries[entryKey(mission, iso)]) existing++;
   });
-
-  const actionLabel = periodSelectedStatus === "__CLEAR__"
-    ? "effacer le statut de"
-    : periodSelectedStatus
-      ? `appliquer le statut "${periodSelectedStatus}" à`
-      : "appliquer un statut à (choisis un statut ci-dessus pour)";
 
   summary.className = "period-summary" + (existing>0 ? " warn" : "");
   let txt = "";
@@ -1061,19 +1057,20 @@ function updatePeriodSummary(){
 }
 
 function applyPeriodEntry(){
-  const mission = document.getElementById("periodMission").value.trim();
   const dates = getPeriodDates();
 
-  if(!mission){
-    showToast("Indique le nom d'une mission");
-    return;
-  }
   if(dates.length === 0){
     showToast("Plage de dates invalide");
     return;
   }
   if(!periodSelectedStatus){
     showToast("Choisis un statut à appliquer");
+    return;
+  }
+
+  const mission = document.getElementById("periodMission").value.trim();
+  if(!mission){
+    showToast("Indique le nom d'une mission");
     return;
   }
 
@@ -1111,6 +1108,155 @@ function applyPeriodEntry(){
 }
 
 // ============================================================
+// SAISIE D'INDISPONIBILITÉ (toutes les missions à la fois)
+// ============================================================
+let indispoSelectedStatus = null;
+
+function setupIndispoEntry(){
+  document.getElementById("openIndispoBtn").addEventListener("click", openIndispoSheet);
+  document.getElementById("indispoCancel").addEventListener("click", closeIndispoSheet);
+  document.getElementById("indispoSheet").addEventListener("click", e=>{
+    if(e.target.id === "indispoSheet") closeIndispoSheet();
+  });
+  document.getElementById("indispoStart").addEventListener("change", updateIndispoSummary);
+  document.getElementById("indispoEnd").addEventListener("change", updateIndispoSummary);
+  document.getElementById("indispoApply").addEventListener("click", applyIndispoEntry);
+}
+
+function openIndispoSheet(){
+  const y = state.year, m = currentMonthIndex;
+  document.getElementById("indispoStart").value = isoDate(y,m,1);
+  document.getElementById("indispoEnd").value = isoDate(y,m,daysInMonth(y,m));
+
+  indispoSelectedStatus = "OFF"; // sensible default: Indisponible
+  const grid = document.getElementById("indispoStatusGrid");
+  grid.innerHTML = "";
+  STATUTS.filter(s=>s.code === "OFF").forEach(s=>{
+    const btn = document.createElement("button");
+    btn.className = "status-btn" + (s.code === "OFF" ? " selected" : "");
+    btn.style.background = `var(--c-${s.code})`;
+    btn.textContent = s.code;
+    btn.dataset.code = s.code;
+    btn.addEventListener("click", ()=>{
+      indispoSelectedStatus = s.code;
+      grid.querySelectorAll(".status-btn").forEach(b=>b.classList.remove("selected"));
+      btn.classList.add("selected");
+      updateIndispoSummary();
+    });
+    grid.appendChild(btn);
+  });
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "status-btn clear";
+  clearBtn.textContent = "Effacer";
+  clearBtn.addEventListener("click", ()=>{
+    indispoSelectedStatus = "__CLEAR__";
+    grid.querySelectorAll(".status-btn").forEach(b=>b.classList.remove("selected"));
+    clearBtn.classList.add("selected");
+    updateIndispoSummary();
+  });
+  grid.appendChild(clearBtn);
+
+  updateIndispoSummary();
+  document.getElementById("indispoSheet").classList.add("active");
+}
+
+function closeIndispoSheet(){
+  document.getElementById("indispoSheet").classList.remove("active");
+}
+
+function getIndispoDates(){
+  const startStr = document.getElementById("indispoStart").value;
+  const endStr = document.getElementById("indispoEnd").value;
+  if(!startStr || !endStr) return [];
+  const start = new Date(startStr+"T00:00:00");
+  const end = new Date(endStr+"T00:00:00");
+  if(end < start) return [];
+  const dates = [];
+  let cur = new Date(start);
+  while(cur <= end){
+    dates.push(`${cur.getFullYear()}-${pad2(cur.getMonth()+1)}-${pad2(cur.getDate())}`);
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
+}
+
+function updateIndispoSummary(){
+  const summary = document.getElementById("indispoSummary");
+  const dates = getIndispoDates();
+
+  if(dates.length === 0){
+    summary.className = "period-summary warn";
+    summary.textContent = "Plage de dates invalide (vérifie que la date de fin est après la date de début).";
+    return;
+  }
+
+  let existing = 0;
+  state.missions.forEach(m=>{
+    dates.forEach(iso=>{
+      if(state.entries[entryKey(m, iso)]) existing++;
+    });
+  });
+
+  const actionLabel = indispoSelectedStatus === "__CLEAR__"
+    ? "effacer le statut de"
+    : indispoSelectedStatus
+      ? `appliquer le statut "${indispoSelectedStatus}" à`
+      : "appliquer un statut à (choisis un statut ci-dessus pour)";
+
+  summary.className = "period-summary" + (existing>0 ? " warn" : "");
+  let txt = `<strong>${dates.length}</strong> jour${dates.length>1?'s':''} pour <strong>les ${state.missions.length} missions</strong> — ${actionLabel} cette période sur chacune d'elles.`;
+  if(existing > 0){
+    txt += ` ${existing} saisie${existing>1?'s':''} déjà présente${existing>1?'s':''} sera${existing>1?'ont':''} remplacée${existing>1?'s':''}.`;
+  }
+  summary.innerHTML = txt;
+}
+
+function applyIndispoEntry(){
+  const dates = getIndispoDates();
+
+  if(dates.length === 0){
+    showToast("Plage de dates invalide");
+    return;
+  }
+  if(!indispoSelectedStatus){
+    showToast("Choisis un statut à appliquer");
+    return;
+  }
+  if(state.missions.length === 0){
+    showToast("Aucune mission enregistrée pour le moment");
+    return;
+  }
+
+  let existing = 0;
+  state.missions.forEach(m=>{
+    dates.forEach(iso=>{
+      if(state.entries[entryKey(m, iso)]) existing++;
+    });
+  });
+
+  const actionWord = indispoSelectedStatus === "__CLEAR__" ? "Effacer" : indispoSelectedStatus;
+  let confirmMsg = `Appliquer "${actionWord}" à ${dates.length} jour${dates.length>1?'s':''} sur les ${state.missions.length} missions ?`;
+  if(existing>0) confirmMsg += ` (${existing} saisie${existing>1?'s':''} déjà présente${existing>1?'s':''} sera${existing>1?'ont':''} remplacée${existing>1?'s':''})`;
+  if(!confirm(confirmMsg)) return;
+
+  state.missions.forEach(m=>{
+    dates.forEach(iso=>{
+      const key = entryKey(m, iso);
+      if(indispoSelectedStatus === "__CLEAR__"){
+        delete state.entries[key];
+      }else{
+        state.entries[key] = indispoSelectedStatus;
+      }
+    });
+  });
+
+  saveState();
+  closeIndispoSheet();
+  renderCalendar();
+  showToast(`${dates.length} jour${dates.length>1?'s':''} mis à jour sur ${state.missions.length} missions`);
+}
+
+// ============================================================
 // INIT
 // ============================================================
 window.addEventListener("DOMContentLoaded", ()=>{
@@ -1123,6 +1269,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   setupYearArchivePrompt();
   setupVacancesAnneeEditor();
   setupPeriodEntry();
+  setupIndispoEntry();
   setupExportImport();
   renderCalendar();
 

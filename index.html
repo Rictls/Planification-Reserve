@@ -29,9 +29,8 @@ try{
   --c-P:#6A4C93;
   --c-D:#1565C0;
   --c-V:#0097A7;
-  --c-NR:#B71C1C;
-  --c-X:#EF6C00;
-  --c-OFF:#8D6E63;
+  --c-NR:#8D6E63;
+  --c-OFF:#B71C1C;
   --bg-weekend:#0A1420;
   --bg-ferie:#1A1023;
   --on-gold:#0E1B2E;
@@ -58,9 +57,8 @@ try{
   --c-P:#4A148C;
   --c-D:#0D47A1;
   --c-V:#00666E;
-  --c-NR:#8E0000;
-  --c-X:#B85400;
-  --c-OFF:#5D4037;
+  --c-NR:#5D4037;
+  --c-OFF:#8E0000;
   --bg-weekend:#ECE8DC;
   --bg-ferie:#E9DCEA;
   --on-gold:#FFFFFF;
@@ -457,16 +455,23 @@ table.synth tbody tr:active{background:var(--bg-elev2);}
 
 .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
+.period-buttons-row{
+  display:flex;gap:8px;margin-bottom:14px;
+}
 .btn-period{
-  width:100%;
-  display:flex;align-items:center;justify-content:center;gap:8px;
+  flex:1;width:100%;
+  display:flex;align-items:center;justify-content:center;gap:6px;
   background:var(--bg-elev);border:1px dashed var(--gold-dim);
   color:var(--gold);border-radius:var(--radius);
-  padding:11px;margin-bottom:14px;
-  font-family:var(--ff-display);font-size:13px;letter-spacing:0.03em;text-transform:uppercase;
+  padding:11px 6px;
+  font-family:var(--ff-display);font-size:12px;letter-spacing:0.02em;text-transform:uppercase;
+  text-align:center;line-height:1.3;
 }
 .btn-period:active{background:var(--bg-elev2);}
-.btn-period .icon{font-size:14px;}
+.btn-period .icon{font-size:13px;flex:none;}
+.btn-period-indispo{
+  border-color:var(--c-OFF);color:var(--c-OFF);
+}
 
 .field-row select{
   width:100%;background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
@@ -510,6 +515,7 @@ table.synth tbody tr:active{background:var(--bg-elev2);}
 .mission-combo-item:active{background:var(--bg);}
 
 .period-status-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
+#indispoStatusGrid{grid-template-columns:repeat(2,1fr);}
 .period-summary{
   background:var(--bg-elev2);border-radius:8px;padding:10px 12px;margin-top:14px;
   font-size:12.5px;color:var(--text-dim);
@@ -581,9 +587,14 @@ footer.app-footer{
       <button id="nextMonth" aria-label="Mois suivant">›</button>
     </div>
 
-    <button class="btn-period" id="openPeriodBtn">
-      <span class="icon">▤</span> Saisir une période
-    </button>
+    <div class="period-buttons-row">
+      <button class="btn-period" id="openPeriodBtn">
+        <span class="icon">▤</span> Saisir une période mission
+      </button>
+      <button class="btn-period btn-period-indispo" id="openIndispoBtn">
+        <span class="icon">▤</span> Saisir une indisponibilité
+      </button>
+    </div>
 
     <div class="cal-wrap">
       <table class="cal" id="calTable"></table>
@@ -742,13 +753,13 @@ footer.app-footer{
   </div>
 </div>
 
-<!-- ===== PERIOD ENTRY SHEET ===== -->
+<!-- ===== PERIOD ENTRY SHEET (mission) ===== -->
 <div class="sheet-backdrop" id="periodSheet">
   <div class="sheet">
-    <h3>Saisir une période</h3>
+    <h3>Saisir une période mission</h3>
     <p class="sub" id="periodSubLabel">Applique un statut à une plage de jours — tape le nom d'une nouvelle mission pour la créer directement</p>
 
-    <div class="field-row">
+    <div class="field-row" id="periodMissionRow">
       <label>Mission</label>
       <div class="mission-combo">
         <input type="text" id="periodMission" placeholder="Choisis ou tape un nouveau nom…" autocomplete="off">
@@ -778,6 +789,37 @@ footer.app-footer{
     <div class="sheet-actions">
       <button class="btn" id="periodCancel">Annuler</button>
       <button class="btn primary" id="periodApply">Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== INDISPONIBILITE ENTRY SHEET (toutes missions) ===== -->
+<div class="sheet-backdrop" id="indispoSheet">
+  <div class="sheet">
+    <h3>Saisir une indisponibilité</h3>
+    <p class="sub">S'applique automatiquement à toutes tes missions pour la plage de jours indiquée — congés, arrêt, indisponibilité…</p>
+
+    <div class="row-2">
+      <div class="field-row">
+        <label>Du</label>
+        <input type="date" id="indispoStart">
+      </div>
+      <div class="field-row">
+        <label>Au</label>
+        <input type="date" id="indispoEnd">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Statut à appliquer</label>
+      <div class="period-status-grid" id="indispoStatusGrid"></div>
+    </div>
+
+    <div class="period-summary" id="indispoSummary">Choisis une plage de dates.</div>
+
+    <div class="sheet-actions">
+      <button class="btn" id="indispoCancel">Annuler</button>
+      <button class="btn primary" id="indispoApply">Appliquer</button>
     </div>
   </div>
 </div>
