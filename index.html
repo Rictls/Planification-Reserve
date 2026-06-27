@@ -35,6 +35,7 @@ try{
   --bg-ferie:#1A1023;
   --on-gold:#0E1B2E;
   --bg-fade:rgba(14,27,46,0.85);
+  --overdue:#FF3B30;
   --radius:10px;
   --ff-display:'Oswald',-apple-system,sans-serif;
   --ff-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -63,6 +64,7 @@ try{
   --bg-ferie:#E9DCEA;
   --on-gold:#FFFFFF;
   --bg-fade:rgba(247,245,240,0.85);
+  --overdue:#C92A1E;
 }
 [data-theme="light"] .vacances-cell.vacances-on{
   background:repeating-linear-gradient(45deg,#B85400,#B85400 4px,#9C4600 4px,#9C4600 8px);
@@ -258,6 +260,9 @@ table.cal thead th.mission-name{
   display:flex;align-items:center;justify-content:center;
   color:#fff;
 }
+.day-cell .pill.pill-overdue{
+  box-shadow:inset 0 0 0 2px var(--overdue);
+}
 .daynum-row th{
   font-family:var(--ff-mono);font-size:10px;color:var(--text-faint);
   padding:3px 0 !important;background:var(--bg-elev);
@@ -390,6 +395,22 @@ table.synth tbody tr:active{background:var(--bg-elev2);}
 }
 .stat-card .val{font-family:var(--ff-display);font-size:26px;color:var(--gold);}
 .stat-card .lbl{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+
+/* ===== FINANCE STAT CARDS (synthèse) ===== */
+.finance-stat-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.finance-stat{
+  background:var(--bg-elev2);border-radius:var(--radius);
+  padding:10px 4px;text-align:center;border:1px solid var(--line);
+}
+.finance-stat .val{font-family:var(--ff-display);font-size:17px;color:var(--text);}
+.finance-stat .lbl{font-size:9.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.02em;margin-top:2px;}
+.finance-stat-paye{border-color:var(--c-C);}
+.finance-stat-paye .val{color:var(--c-C);}
+.finance-stat-avenir{border-color:var(--gold-dim);}
+.finance-stat-avenir .val{color:var(--gold);}
+.finance-stat-retard{border-color:var(--overdue);}
+.finance-stat-retard .val{color:var(--overdue);}
+table.synth td.cell-overdue{color:var(--overdue);font-weight:600;}
 
 /* ===== VACANCES SCOLAIRES — settings ===== */
 .vacances-badge{
@@ -616,6 +637,20 @@ footer.app-footer{
 
     <div class="card">
       <p class="card-title">Solde financier mensuel</p>
+      <div class="finance-stat-cards">
+        <div class="finance-stat finance-stat-paye">
+          <div class="val" id="financeStatPaye">0 €</div>
+          <div class="lbl">Déjà payé</div>
+        </div>
+        <div class="finance-stat finance-stat-avenir">
+          <div class="val" id="financeStatAVenir">0 €</div>
+          <div class="lbl">À venir</div>
+        </div>
+        <div class="finance-stat finance-stat-retard">
+          <div class="val" id="financeStatRetard">0 €</div>
+          <div class="lbl">En retard</div>
+        </div>
+      </div>
       <div style="overflow-x:auto;">
         <table class="synth" id="financeTable"></table>
       </div>

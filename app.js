@@ -106,6 +106,10 @@ function getVacancesScolairesSet(year){
 // ---------- Helpers dates ----------
 function pad2(n){ return n<10 ? "0"+n : ""+n; }
 function isoDate(y,m,d){ return `${y}-${pad2(m+1)}-${pad2(d)}`; }
+function getTodayIso(){
+  const d = new Date();
+  return isoDate(d.getFullYear(), d.getMonth(), d.getDate());
+}
 function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
 function jsWeekday(y,m,d){ // 0=lundi..6=dimanche
   const w = new Date(y,m,d).getDay(); // 0=dim..6=sam
@@ -160,6 +164,7 @@ function renderCalendarTable(){
   const nbDays = daysInMonth(y,m);
   const table = document.getElementById("calTable");
   table.innerHTML = "";
+  const todayIso = getTodayIso();
 
   // thead: weekday letters
   const theadWeekday = document.createElement("thead");
@@ -246,6 +251,9 @@ function renderCalendarTable(){
         pill.className = "pill";
         pill.style.background = `var(--c-${code}, #444)`;
         pill.textContent = code;
+        if(code === "C" && iso < todayIso){
+          pill.classList.add("pill-overdue");
+        }
         td.appendChild(pill);
       }
       td.addEventListener("click", ()=> openStatusSheet(mission, iso));
@@ -460,36 +468,47 @@ function renderSynthTable(){
 function renderFinanceTable(){
   const table = document.getElementById("financeTable");
   table.innerHTML = "";
+  const todayIso = getTodayIso();
   const thead = document.createElement("thead");
-  thead.innerHTML = `<tr><th>Mois</th><th>Jours travaillés (C+P)</th><th>Solde (€)</th></tr>`;
+  thead.innerHTML = `<tr><th>Mois</th><th>Payé</th><th>À venir</th><th>En retard</th></tr>`;
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  let totalJours = 0, totalSolde = 0;
+  let totalPaye = 0, totalAVenir = 0, totalRetard = 0;
   for(let m=0; m<12; m++){
-    let joursTravailles = 0;
+    let jp = 0, ja = 0, jr = 0;
     Object.keys(state.entries).forEach(key=>{
       const [mission, iso] = key.split("|");
       if(!iso.startsWith(state.year+"-")) return;
       const monthOfIso = parseInt(iso.split("-")[1],10)-1;
       if(monthOfIso !== m) return;
       const code = state.entries[key];
-      if(code==="C" || code==="P") joursTravailles++;
+      if(code==="P") jp++;
+      if(code==="C"){
+        if(iso < todayIso) jr++; else ja++;
+      }
     });
-    const solde = joursTravailles * state.tarifJournalier;
-    totalJours += joursTravailles;
-    totalSolde += solde;
+    const soldePaye = jp*state.tarifJournalier;
+    const soldeAVenir = ja*state.tarifJournalier;
+    const soldeRetard = jr*state.tarifJournalier;
+    totalPaye += soldePaye;
+    totalAVenir += soldeAVenir;
+    totalRetard += soldeRetard;
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${MOIS_FR[m]}</td><td>${joursTravailles}</td><td>${solde.toFixed(2)} €</td>`;
+    tr.innerHTML = `<td>${MOIS_FR[m]}</td><td>${soldePaye.toFixed(2)} €</td><td>${soldeAVenir.toFixed(2)} €</td><td class="${soldeRetard>0?'cell-overdue':''}">${soldeRetard.toFixed(2)} €</td>`;
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
 
   const tfoot = document.createElement("tfoot");
   const trf = document.createElement("tr");
-  trf.innerHTML = `<td>TOTAL</td><td>${totalJours}</td><td>${totalSolde.toFixed(2)} €</td>`;
+  trf.innerHTML = `<td>TOTAL</td><td>${totalPaye.toFixed(2)} €</td><td>${totalAVenir.toFixed(2)} €</td><td class="cell-overdue">${totalRetard.toFixed(2)} €</td>`;
   tfoot.appendChild(trf);
   table.appendChild(tfoot);
+
+  document.getElementById("financeStatPaye").textContent = totalPaye.toFixed(0)+" €";
+  document.getElementById("financeStatAVenir").textContent = totalAVenir.toFixed(0)+" €";
+  document.getElementById("financeStatRetard").textContent = totalRetard.toFixed(0)+" €";
 }
 
 function renderSynthesis(){
