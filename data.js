@@ -24,9 +24,8 @@ const STATUTS = [
   { code: "P",   label: "Payé",             color: "#6A4C93" },
   { code: "D",   label: "Disponible",       color: "#1565C0" },
   { code: "V",   label: "Volontaire",       color: "#0097A7" },
-  { code: "NR",  label: "Non retenue",      color: "#B71C1C" },
-  { code: "X",   label: "Vacances scolaire",color: "#EF6C00" },
-  { code: "OFF", label: "Off",              color: "#8D6E63" }
+  { code: "NR",  label: "Non retenue",      color: "#8D6E63" },
+  { code: "OFF", label: "Indisponible",     color: "#B71C1C" }
 ];
 
 // Jours fériés France 2026 (calculés depuis le fichier Excel, AP7:AP17)

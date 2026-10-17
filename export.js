@@ -5,6 +5,7 @@
 function setupExportImport(){
   document.getElementById("exportJsonBtn").addEventListener("click", exportJson);
   document.getElementById("exportXlsxBtn").addEventListener("click", exportXlsx);
+  document.getElementById("exportIcsBtn").addEventListener("click", exportIcs);
   document.getElementById("importJsonBtn").addEventListener("click", ()=>{
     document.getElementById("importJsonFile").click();
   });
@@ -289,4 +290,124 @@ function buildXlsxBlob(){
   const wb = buildWorkbook();
   const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+// ============================================================
+// EXPORT iCALENDAR (.ics) — Missions Convoqué (C)
+// Regroupe les jours C consécutifs (écart ≤ 1 jour, week-ends inclus)
+// en périodes continues, une période = un événement dans le calendrier.
+// ============================================================
+
+function exportIcs(){
+  const y = state.year;
+
+  // 1. Collecter toutes les entrées C de l'année, groupées par mission
+  const missionsDates = {};
+  Object.keys(state.entries).forEach(key => {
+    const sep = key.indexOf("|");
+    const mission = key.slice(0, sep);
+    const iso     = key.slice(sep + 1);
+    if(!iso.startsWith(y + "-")) return;
+    if(state.entries[key] !== "C") return;
+    if(!missionsDates[mission]) missionsDates[mission] = [];
+    missionsDates[mission].push(iso);
+  });
+
+  // 2. Fusionner les jours consécutifs en périodes
+  function makePeriods(dates){
+    dates = [...dates].sort();
+    if(!dates.length) return [];
+    const periods = [];
+    let start = dates[0], prev = dates[0];
+    for(let i = 1; i < dates.length; i++){
+      const gap = (new Date(dates[i]) - new Date(prev)) / 86400000;
+      if(gap <= 1){ prev = dates[i]; }
+      else { periods.push([start, prev]); start = dates[i]; prev = dates[i]; }
+    }
+    periods.push([start, prev]);
+    return periods;
+  }
+
+  // 3. Construire les événements iCalendar
+  //    iCal DATE format : YYYYMMDD (journée entière)
+  //    DTEND = lendemain du dernier jour (convention iCal exclusive)
+  function isoToIcal(iso){ return iso.replace(/-/g, ""); }
+  function dayAfter(iso){
+    const d = new Date(iso);
+    d.setDate(d.getDate() + 1);
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    return `${d.getFullYear()}${m}${dd}`;
+  }
+  function makeUid(mission, start){
+    return `gend-reserve-${y}-${mission.replace(/\s+/g,"-")}-${start}@planning-reserve`;
+  }
+  function icalEscape(s){
+    return s.replace(/\\/g,"\\\\").replace(/;/g,"\;").replace(/,/g,"\\,").replace(/\n/g,"\\n");
+  }
+  // Timestamp de création (maintenant, en UTC)
+  const now = new Date();
+  const dtstamp = now.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Planning Réserve Gendarmerie//FR",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:Missions Gendarmerie ${y}`,
+    "X-WR-TIMEZONE:Europe/Paris",
+  ];
+
+  let totalEvents = 0;
+  Object.keys(missionsDates).sort().forEach(mission => {
+    const periods = makePeriods(missionsDates[mission]);
+    periods.forEach(([start, end]) => {
+      const nbJours = (new Date(end) - new Date(start)) / 86400000 + 1;
+      const summary = nbJours > 1
+        ? `Mission ${mission} (${nbJours} j)`
+        : `Mission ${mission}`;
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:${makeUid(mission, start)}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART;VALUE=DATE:${isoToIcal(start)}`,
+        `DTEND;VALUE=DATE:${dayAfter(end)}`,
+        `SUMMARY:${icalEscape(summary)}`,
+        `DESCRIPTION:${icalEscape(`Mission gendarmerie - ${mission}\\nStatut : Convoqué\\nAnnée : ${y}`)}`,
+        "CATEGORIES:GENDARMERIE,RESERVE",
+        "STATUS:CONFIRMED",
+        "TRANSP:OPAQUE",
+        "END:VEVENT"
+      );
+      totalEvents++;
+    });
+  });
+
+  lines.push("END:VCALENDAR");
+
+  // 4. Télécharger ou partager le fichier
+  const icsContent = lines.join("\r\n") + "\r\n";
+  const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+  const filename = `missions_gendarmerie_${y}.ics`;
+
+  // Utiliser Web Share API si disponible (iOS Safari → ajoute directement au Calendrier)
+  if(navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: "text/calendar" })] })){
+    const file = new File([blob], filename, { type: "text/calendar" });
+    navigator.share({ files: [file], title: `Missions Gendarmerie ${y}` })
+      .catch(err => { if(err.name !== "AbortError") dlIcs(blob, filename); });
+  } else {
+    dlIcs(blob, filename);
+  }
+}
+
+function dlIcs(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
