@@ -3431,8 +3431,11 @@ function exportIcs(){
     const dd = String(d.getDate()).padStart(2,"0");
     return `${d.getFullYear()}${m}${dd}`;
   }
-  function makeUid(mission, start){
-    return `gend-reserve-${y}-${mission.replace(/\s+/g,"-")}-${start}@planning-reserve`;
+  function makeUid(mission, start, end){
+    // UID déterministe : même mission + mêmes dates = même UID
+    // → le Calendrier iPhone met à jour l'événement existant au lieu de créer un doublon
+    const slug = mission.replace(/[^A-Za-z0-9]/g,"-").replace(/-+/g,"-").toLowerCase();
+    return `gend-reserve-${y}-${slug}-${start}-${end}@planning-reserve`;
   }
   function icalEscape(s){
     return s.replace(/\\/g,"\\\\").replace(/;/g,"\;").replace(/,/g,"\\,").replace(/\n/g,"\\n");
@@ -3461,7 +3464,7 @@ function exportIcs(){
         : `Mission ${mission}`;
       lines.push(
         "BEGIN:VEVENT",
-        `UID:${makeUid(mission, start)}`,
+        `UID:${makeUid(mission, start, end)}`,
         `DTSTAMP:${dtstamp}`,
         `DTSTART;VALUE=DATE:${isoToIcal(start)}`,
         `DTEND;VALUE=DATE:${dayAfter(end)}`,
