@@ -106,6 +106,10 @@ input,select{font-family:inherit;}
   border-bottom:1px solid var(--line);
   padding:14px 16px 10px;
 }
+.topbar-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;
+}
+.topbar-row .brand{flex:1;min-width:0;}
 .brand{
   display:flex;align-items:baseline;gap:10px;
 }
@@ -131,7 +135,7 @@ input,select{font-family:inherit;}
 .brand .year{color:var(--text-faint);font-family:var(--ff-mono);font-size:14px;margin-left:auto;}
 
 .tabs{
-  display:flex;gap:4px;margin-top:12px;
+  display:flex;gap:4px;margin-top:0;
   overflow-x:auto;scrollbar-width:none;
 }
 .tabs::-webkit-scrollbar{display:none;}
@@ -644,26 +648,28 @@ footer.app-footer{
 <body>
 
 <div class="topbar">
-  <div class="brand">
-    <span class="mark">RÉS.</span>
-    <h1>Planning Réserve</h1>
-  </div>
-  <!-- PILL ANNÉE -->
-  <div class="year-pill-wrap" id="yearPillWrap">
-    <button class="year-pill" id="yearPillBtn" aria-label="Changer d'année">
-      <span id="yearPillLabel">2026</span>
-      <span class="chev">▼</span>
-    </button>
-    <div class="year-dropdown" id="yearDropdown">
-      <div class="yd-header">Mes plannings</div>
-      <div id="ydList"><!-- rempli par renderYearPill() --></div>
-      <div class="yd-add" id="ydAddBtn">
-        <span class="yd-add-icon">＋</span>
-        <span id="ydAddLabel">Créer le planning 2027</span>
+  <div class="topbar-row">
+    <div class="brand">
+      <span class="mark">RÉS.</span>
+      <h1>Planning Réserve</h1>
+    </div>
+    <!-- PILL ANNÉE -->
+    <div class="year-pill-wrap" id="yearPillWrap">
+      <button class="year-pill" id="yearPillBtn" aria-label="Changer d'année">
+        <span id="yearPillLabel">2026</span>
+        <span class="chev">▼</span>
+      </button>
+      <div class="year-dropdown" id="yearDropdown">
+        <div class="yd-header">Mes plannings</div>
+        <div id="ydList"><!-- rempli par renderYearPill() --></div>
+        <div class="yd-add" id="ydAddBtn">
+          <span class="yd-add-icon">＋</span>
+          <span id="ydAddLabel">Créer le planning 2027</span>
+        </div>
       </div>
     </div>
+    <button class="theme-toggle" id="themeToggleBtn" aria-label="Changer de thème" title="Mode jour / nuit">☀</button>
   </div>
-  <button class="theme-toggle" id="themeToggleBtn" aria-label="Changer de thème" title="Mode jour / nuit">☀</button>
   <div class="tabs">
     <button class="tab active" data-view="calendar">Calendrier</button>
     <button class="tab" data-view="synthesis">Synthèse</button>
