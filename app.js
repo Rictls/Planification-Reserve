@@ -232,7 +232,6 @@ function setupTabs(){
       document.getElementById("view-"+tab.dataset.view).classList.add("active");
       if(tab.dataset.view === "synthesis") renderSynthesis();
       if(tab.dataset.view === "settings") renderSettings();
-      if(tab.dataset.view === "years") renderYearsTab();
     });
   });
 }
@@ -241,7 +240,12 @@ function setupTabs(){
 // RENDER: CALENDAR
 // ============================================================
 function renderCalendarHeader(){
-  document.getElementById("yearLabel").textContent = state.year;
+  // yearLabel peut être absent (remplacé par la pill topbar)
+  const yl = document.getElementById("yearLabel");
+  if(yl) yl.textContent = state.year;
+  // Mettre à jour la pill si présente
+  const pl = document.getElementById("yearPillLabel");
+  if(pl) pl.textContent = state.year;
   document.getElementById("monthLabel").textContent = MOIS_FR[currentMonthIndex];
   const archiveLabel = document.getElementById("archiveYearLabel");
   const archiveBtnLabel = document.getElementById("archiveYearBtnLabel");
@@ -858,7 +862,7 @@ function applyYearChange(y){
   currentMonthIndex = 0; // revenir à janvier de la nouvelle année
   renderCalendar();
   renderSettings();
-  renderYearsTab();
+  renderYearPill();
   showToast("Planning " + y + " chargé");
 }
 
@@ -1371,26 +1375,35 @@ function applyIndispoEntry(){
 }
 
 // ============================================================
-// ONGLET ANNÉES
+// PILL ANNÉE (topbar dropdown)
 // ============================================================
-function renderYearsTab(){
-  const container = document.getElementById("years-list");
-  if(!container) return;
-  container.innerHTML = "";
+function renderYearPill(){
+  const pill = document.getElementById("yearPillBtn");
+  const pillLabel = document.getElementById("yearPillLabel");
+  const list = document.getElementById("ydList");
+  const addBtn = document.getElementById("ydAddBtn");
+  const addLabel = document.getElementById("ydAddLabel");
+  if(!pill || !list) return;
+
+  // Mettre à jour le label de la pill
+  if(pillLabel) pillLabel.textContent = state.year;
+
+  // Vider la liste
+  list.innerHTML = "";
 
   const todayIso = getTodayIso();
   const years = getAllStoredYears();
-  const currentYear = state.year;
-  const nextYear = Math.max(...years, currentYear) + 1;
+  const nextYear = Math.max(...years, state.year) + 1;
+
+  if(addLabel) addLabel.textContent = `Créer le planning ${nextYear}`;
 
   years.forEach(y=>{
-    const stats = (y === currentYear)
+    const stats = (y === state.year)
       ? (() => {
-          // Stats depuis le state en mémoire (plus à jour)
           let C=0, P=0, retard=0;
           Object.keys(state.entries).forEach(k=>{
             const iso = k.split("|")[1];
-            if(!iso || !iso.startsWith(y+"-")) return;
+            if(!iso) return;
             const code = state.entries[k];
             if(code==="C"){ C++; if(iso < todayIso) retard++; }
             if(code==="P") P++;
@@ -1399,42 +1412,35 @@ function renderYearsTab(){
         })()
       : getYearStats(y);
 
-    const card = document.createElement("div");
-    card.className = "year-card" + (y === currentYear ? " selected" : "");
-    card.dataset.year = y;
+    const item = document.createElement("div");
+    item.className = "yd-item" + (y === state.year ? " active" : "");
 
     let statsHtml = "";
     if(stats && (stats.C > 0 || stats.P > 0)){
-      statsHtml = `
-        <div class="year-stat-row">
-          <span class="stat-chip"><span class="stat-dot c"></span><span class="stat-val">${stats.C}</span> j. Convoqué</span>
-          <span class="stat-chip"><span class="stat-dot p"></span><span class="stat-val">${stats.P}</span> j. Payé</span>
-        </div>`;
-      if(stats.retard > 0){
-        statsHtml += `<div class="year-stat-row">
-          <span class="stat-chip"><span class="stat-dot retard"></span><span class="stat-val">${stats.retard}</span> j. en retard</span>
-        </div>`;
-      }
+      statsHtml += `<span class="yd-stat"><span class="yd-dot c"></span>${stats.C} j. Convoqué</span>`;
+      statsHtml += `<span class="yd-stat"><span class="yd-dot p"></span>${stats.P} j. Payé</span>`;
+      if(stats.retard > 0)
+        statsHtml += `<span class="yd-stat"><span class="yd-dot retard"></span>${stats.retard} j. en retard</span>`;
     } else {
-      statsHtml = `<div class="year-stat-row"><span class="stat-chip year-empty">Aucune donnée</span></div>`;
+      statsHtml = `<span class="yd-stat" style="font-style:italic">Aucune donnée</span>`;
     }
 
-    card.innerHTML = `
-      <div class="year-num">${y}</div>
-      <div class="year-stats">${statsHtml}</div>
-      <span class="year-arrow">›</span>`;
+    item.innerHTML = `
+      <span class="yd-num">${y}</span>
+      <div class="yd-stats">${statsHtml}</div>
+      ${y === state.year ? '<span class="yd-badge">● EN COURS</span>' : ''}`;
 
-    card.addEventListener("click", ()=>{
-      if(y === state.year) return;
-      // Sauvegarder avant de quitter
+    item.addEventListener("click", ()=>{
+      if(y === state.year){ closeYearDropdown(); return; }
       saveState();
       state = loadStateForYear(y);
       saveState();
       currentMonthIndex = 0;
       renderCalendar();
       renderSettings();
-      renderYearsTab();
-      // Basculer sur l'onglet calendrier
+      renderYearPill();
+      closeYearDropdown();
+      // Revenir sur calendrier
       document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
       document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
       const calTab = document.querySelector('[data-view="calendar"]');
@@ -1443,42 +1449,61 @@ function renderYearsTab(){
       showToast("Planning " + y + " chargé");
     });
 
-    container.appendChild(card);
+    list.appendChild(item);
   });
 
-  // Bouton créer nouvelle année
-  const newYearBtn = document.createElement("button");
-  newYearBtn.className = "btn new-year-btn";
-  newYearBtn.innerHTML = `＋ Créer le planning ${nextYear}`;
-  newYearBtn.addEventListener("click", ()=>{
-    if(!confirm(`Créer un nouveau planning vierge pour ${nextYear} ?\nLes missions de ${currentYear} seront copiées comme base de départ.`)) return;
-    // Créer le state pour la nouvelle année en héritant des missions de l'année courante
-    const newState = defaultStateForYear(nextYear);
-    newState.missions = [...state.missions];
-    newState.tarifJournalier = state.tarifJournalier;
-    newState.vacancesZone = state.vacancesZone;
-    // Sauvegarder
-    try{ localStorage.setItem(storeKeyForYear(nextYear), JSON.stringify(newState)); }catch(e){}
-    // Charger
-    saveState();
-    state = loadStateForYear(nextYear);
-    saveState();
-    currentMonthIndex = 0;
-    renderCalendar();
-    renderSettings();
-    renderYearsTab();
-    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
-    const calTab = document.querySelector('[data-view="calendar"]');
-    if(calTab) calTab.classList.add("active");
-    document.getElementById("view-calendar").classList.add("active");
-    showToast("Planning " + nextYear + " créé");
-  });
-  container.appendChild(newYearBtn);
+  // Bouton créer — re-wire à chaque render pour avoir le bon nextYear
+  if(addBtn){
+    addBtn.onclick = ()=>{
+      closeYearDropdown();
+      const confirmMsg = `Créer un nouveau planning pour ${nextYear} ?\nLes missions de ${state.year} seront copiées comme base.`;
+      if(!confirm(confirmMsg)) return;
+      const newState = defaultStateForYear(nextYear);
+      newState.missions = [...state.missions];
+      newState.tarifJournalier = state.tarifJournalier;
+      newState.vacancesZone = state.vacancesZone;
+      try{ localStorage.setItem(storeKeyForYear(nextYear), JSON.stringify(newState)); }catch(e){}
+      saveState();
+      state = loadStateForYear(nextYear);
+      saveState();
+      currentMonthIndex = 0;
+      renderCalendar();
+      renderSettings();
+      renderYearPill();
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+      const calTab = document.querySelector('[data-view="calendar"]');
+      if(calTab) calTab.classList.add("active");
+      document.getElementById("view-calendar").classList.add("active");
+      showToast("Planning " + nextYear + " créé");
+    };
+  }
 }
 
-function setupYearsTab(){
-  // Rien à faire : renderYearsTab() construit tout dynamiquement
+function closeYearDropdown(){
+  const dd = document.getElementById("yearDropdown");
+  const btn = document.getElementById("yearPillBtn");
+  if(dd) dd.classList.remove("open");
+  if(btn) btn.classList.remove("open");
+}
+
+function setupYearPill(){
+  const pillBtn = document.getElementById("yearPillBtn");
+  const dropdown = document.getElementById("yearDropdown");
+  const wrap = document.getElementById("yearPillWrap");
+  if(!pillBtn || !dropdown) return;
+
+  pillBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const open = dropdown.classList.toggle("open");
+    pillBtn.classList.toggle("open", open);
+    if(open) renderYearPill(); // re-render au clic pour stats fraîches
+  });
+
+  // Fermer si clic ailleurs
+  document.addEventListener("click", (e)=>{
+    if(wrap && !wrap.contains(e.target)) closeYearDropdown();
+  });
 }
 
 // ============================================================
@@ -1496,8 +1521,9 @@ window.addEventListener("DOMContentLoaded", ()=>{
   setupPeriodEntry();
   setupIndispoEntry();
   setupExportImport();
+  setupYearPill();
   renderCalendar();
-  renderYearsTab();
+  renderYearPill();
 
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(()=>{});
