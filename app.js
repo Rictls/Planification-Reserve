@@ -1417,18 +1417,20 @@ function renderYearPill(){
 
     let statsHtml = "";
     if(stats && (stats.C > 0 || stats.P > 0)){
-      statsHtml += `<span class="yd-stat"><span class="yd-dot c"></span>${stats.C} j. Convoqué</span>`;
-      statsHtml += `<span class="yd-stat"><span class="yd-dot p"></span>${stats.P} j. Payé</span>`;
+      statsHtml += `<div class="yd-stat"><span class="yd-dot c"></span><span class="yd-stat-label">Convoqué</span><span class="yd-stat-val">${stats.C} j.</span></div>`;
+      statsHtml += `<div class="yd-stat"><span class="yd-dot p"></span><span class="yd-stat-label">Payé</span><span class="yd-stat-val">${stats.P} j.</span></div>`;
       if(stats.retard > 0)
-        statsHtml += `<span class="yd-stat"><span class="yd-dot retard"></span>${stats.retard} j. en retard</span>`;
+        statsHtml += `<div class="yd-stat"><span class="yd-dot retard"></span><span class="yd-stat-label">En retard</span><span class="yd-stat-val">${stats.retard} j.</span></div>`;
     } else {
-      statsHtml = `<span class="yd-stat" style="font-style:italic">Aucune donnée</span>`;
+      statsHtml = `<div class="yd-stat" style="font-style:italic;color:var(--text-faint)">Aucune donnée</div>`;
     }
 
     item.innerHTML = `
-      <span class="yd-num">${y}</span>
-      <div class="yd-stats">${statsHtml}</div>
-      ${y === state.year ? '<span class="yd-badge">● EN COURS</span>' : ''}`;
+      <div class="yd-left">
+        <span class="yd-num">${y}</span>
+        ${y === state.year ? '<span class="yd-badge">● EN COURS</span>' : ''}
+      </div>
+      <div class="yd-stats">${statsHtml}</div>`;
 
     item.addEventListener("click", ()=>{
       if(y === state.year){ closeYearDropdown(); return; }

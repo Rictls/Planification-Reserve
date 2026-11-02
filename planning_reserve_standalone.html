@@ -594,7 +594,7 @@ footer.app-footer{
 .year-dropdown{
   position:absolute;top:calc(100% + 8px);right:0;
   background:var(--bg-elev2);border:1px solid var(--border);
-  border-radius:14px;min-width:230px;
+  border-radius:14px;min-width:290px;
   box-shadow:0 8px 32px rgba(0,0,0,.4);
   overflow:hidden;display:none;z-index:100;
 }
@@ -604,28 +604,34 @@ footer.app-footer{
   letter-spacing:.09em;color:var(--text-faint);font-weight:700;
 }
 .yd-item{
-  display:flex;align-items:center;gap:10px;
-  padding:9px 16px;cursor:pointer;
+  display:flex;align-items:flex-start;gap:12px;
+  padding:11px 16px;cursor:pointer;
   border-top:1px solid var(--border);
   transition:background .12s;
 }
 .yd-item:hover{background:var(--bg-card);}
 .yd-item.active{background:rgba(201,168,76,.07);}
+.yd-left{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;}
 .yd-num{
-  font-family:var(--ff-mono);font-size:19px;font-weight:800;
-  color:var(--gold);min-width:46px;
+  font-family:var(--ff-mono);font-size:20px;font-weight:800;
+  color:var(--gold);
 }
 .yd-item:not(.active) .yd-num{color:var(--text-dim);}
-.yd-stats{flex:1;display:flex;flex-direction:column;gap:3px;}
-.yd-stat{font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px;}
-.yd-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.yd-badge{font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.04em;white-space:nowrap;}
+.yd-stats{flex:1;display:flex;flex-direction:column;gap:5px;padding-top:2px;}
+.yd-stat{
+  font-size:12px;color:var(--text-dim);
+  display:flex;align-items:center;gap:7px;
+}
+.yd-stat-label{flex:1;}
+.yd-stat-val{font-family:var(--ff-mono);font-weight:700;color:var(--text);font-size:13px;text-align:right;}
+.yd-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .yd-dot.c{background:var(--c-C);}
 .yd-dot.p{background:var(--c-P);}
 .yd-dot.retard{background:var(--overdue);}
-.yd-badge{font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.04em;}
 .yd-add{
   display:flex;align-items:center;gap:10px;
-  padding:9px 16px;cursor:pointer;color:var(--text-dim);font-size:13px;
+  padding:10px 16px;cursor:pointer;color:var(--text-dim);font-size:13px;
   border-top:1px solid var(--border);transition:background .12s,color .12s;
 }
 .yd-add:hover{background:var(--bg-card);color:var(--gold);}
@@ -2732,18 +2738,20 @@ function renderYearPill(){
 
     let statsHtml = "";
     if(stats && (stats.C > 0 || stats.P > 0)){
-      statsHtml += `<span class="yd-stat"><span class="yd-dot c"></span>${stats.C} j. Convoqué</span>`;
-      statsHtml += `<span class="yd-stat"><span class="yd-dot p"></span>${stats.P} j. Payé</span>`;
+      statsHtml += `<div class="yd-stat"><span class="yd-dot c"></span><span class="yd-stat-label">Convoqué</span><span class="yd-stat-val">${stats.C} j.</span></div>`;
+      statsHtml += `<div class="yd-stat"><span class="yd-dot p"></span><span class="yd-stat-label">Payé</span><span class="yd-stat-val">${stats.P} j.</span></div>`;
       if(stats.retard > 0)
-        statsHtml += `<span class="yd-stat"><span class="yd-dot retard"></span>${stats.retard} j. en retard</span>`;
+        statsHtml += `<div class="yd-stat"><span class="yd-dot retard"></span><span class="yd-stat-label">En retard</span><span class="yd-stat-val">${stats.retard} j.</span></div>`;
     } else {
-      statsHtml = `<span class="yd-stat" style="font-style:italic">Aucune donnée</span>`;
+      statsHtml = `<div class="yd-stat" style="font-style:italic;color:var(--text-faint)">Aucune donnée</div>`;
     }
 
     item.innerHTML = `
-      <span class="yd-num">${y}</span>
-      <div class="yd-stats">${statsHtml}</div>
-      ${y === state.year ? '<span class="yd-badge">● EN COURS</span>' : ''}`;
+      <div class="yd-left">
+        <span class="yd-num">${y}</span>
+        ${y === state.year ? '<span class="yd-badge">● EN COURS</span>' : ''}
+      </div>
+      <div class="yd-stats">${statsHtml}</div>`;
 
     item.addEventListener("click", ()=>{
       if(y === state.year){ closeYearDropdown(); return; }
