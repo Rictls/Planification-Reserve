@@ -2,8 +2,10 @@
 // PLANNING RÉSERVE — Logique application
 // ============================================================
 
-const STORE_KEY = "planningReserve_v1";
+const STORE_KEY_PREFIX = "planningReserve_v1";
+const STORE_KEY_LEGACY = "planningReserve_v1"; // clé legacy avant multi-années
 const THEME_KEY = "planningReserve_theme";
+const ACTIVE_YEAR_KEY = "planningReserve_activeYear";
 
 const MOIS_FR = ["JANVIER","FÉVRIER","MARS","AVRIL","MAI","JUIN","JUILLET","AOÛT","SEPTEMBRE","OCTOBRE","NOVEMBRE","DÉCEMBRE"];
 const JOURS_FR = ["L","M","M","J","V","S","D"];
@@ -11,6 +13,9 @@ const JOURS_FR = ["L","M","M","J","V","S","D"];
 let state = null;
 let currentMonthIndex = new Date().getMonth();
 let pendingCell = null; // {mission, dateISO}
+
+// ---------- Clé de stockage par année ----------
+function storeKeyForYear(y){ return `${STORE_KEY_PREFIX}_${y}`; }
 
 // ---------- Theme (light = high readability outdoors, dark = default) ----------
 function loadTheme(){
@@ -41,20 +46,42 @@ function setupThemeToggle(){
 }
 
 // ---------- Persistence ----------
-function defaultState(){
+function defaultStateForYear(y){
+  // Pour 2026, utiliser les données migrées existantes
+  // Pour les autres années, partir d'un calendrier vierge avec les missions de 2026 comme base
   return {
-    year: 2026,
+    year: y,
     tarifJournalier: TARIF_JOURNALIER_DEFAULT,
     missions: MISSIONS_DEFAULT.filter(m => m !== "Vacances scolaires"),
-    feries: [...FERIES_2026],
-    recup: [...RECUP_DEFAULT],
+    feries: y === 2026 ? [...FERIES_2026] : computeFeriesForYear(y),
+    recup: y === 2026 ? [...RECUP_DEFAULT] : [],
     vacancesZone: VACANCES_ZONE_DEFAULT,
-    // person-edited holiday periods, overriding official/estimated data.
-    // key format: "ZONE|2027-2028" -> [{debut,fin}, ...]
     vacancesOverrides: {},
-    // entries: { "MissionName|YYYY-MM-DD": "C" }
-    entries: stripVacancesScolairesEntries({ ...ENTRIES_MIGRATED_2026 })
+    entries: y === 2026 ? stripVacancesScolairesEntries({ ...ENTRIES_MIGRATED_2026 }) : {}
   };
+}
+
+function defaultState(){ return defaultStateForYear(2026); }
+
+// Calcul approximatif des jours fériés pour une année donnée
+function computeFeriesForYear(y){
+  // Pâques (algorithme de Butcher)
+  const a=y%19, b=Math.floor(y/100), c=y%100, d=Math.floor(b/4), e=b%4;
+  const f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const pMois=Math.floor((h+l-7*m+114)/31);
+  const pJour=((h+l-7*m+114)%31)+1;
+  const paques = new Date(y, pMois-1, pJour);
+  const lundi = new Date(paques); lundi.setDate(lundi.getDate()+1);
+  const ascension = new Date(paques); ascension.setDate(ascension.getDate()+39);
+  const pentecote = new Date(paques); pentecote.setDate(pentecote.getDate()+50);
+  const f2 = (d) => `${y}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return [
+    `${y}-01-01`, `${y}-05-01`, `${y}-05-08`, `${y}-07-14`,
+    `${y}-08-15`, `${y}-11-01`, `${y}-11-11`, `${y}-12-25`,
+    f2(lundi), f2(ascension), f2(pentecote)
+  ].sort();
 }
 
 // The "Vacances scolaires" mission used to be a regular, clickable mission row
@@ -68,13 +95,24 @@ function stripVacancesScolairesEntries(entries){
   return entries;
 }
 
-function loadState(){
+function loadStateForYear(y){
   try{
-    const raw = localStorage.getItem(STORE_KEY);
+    // 1. Chercher la clé par année
+    let raw = localStorage.getItem(storeKeyForYear(y));
+    // 2. Migration : si on charge 2026 et qu'il n'y a pas encore de clé par année,
+    //    essayer la clé legacy (avant la feature multi-années)
+    if(!raw && y === 2026){
+      raw = localStorage.getItem(STORE_KEY_LEGACY);
+      if(raw){
+        // Migrer vers la nouvelle clé
+        try{ localStorage.setItem(storeKeyForYear(2026), raw); }catch(e){}
+      }
+    }
     if(raw){
       const parsed = JSON.parse(raw);
-      // merge with defaults for any missing keys (forward-compat)
-      const merged = Object.assign(defaultState(), parsed);
+      const def = defaultStateForYear(y);
+      const merged = Object.assign(def, parsed);
+      merged.year = y; // forcer l'année correcte
       merged.missions = merged.missions.filter(m => m !== "Vacances scolaires");
       merged.entries = stripVacancesScolairesEntries(merged.entries || {});
       if(!merged.vacancesZone) merged.vacancesZone = VACANCES_ZONE_DEFAULT;
@@ -82,16 +120,67 @@ function loadState(){
       return merged;
     }
   }catch(e){ console.warn("Lecture stockage impossible", e); }
-  return defaultState();
+  return defaultStateForYear(y);
+}
+
+function loadState(){
+  // Chercher l'année active mémorisée, sinon 2026
+  let activeYear = 2026;
+  try{
+    const stored = localStorage.getItem(ACTIVE_YEAR_KEY);
+    if(stored){ const y = parseInt(stored, 10); if(y >= 2020 && y <= 2099) activeYear = y; }
+  }catch(e){}
+  return loadStateForYear(activeYear);
 }
 
 function saveState(){
   try{
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    localStorage.setItem(storeKeyForYear(state.year), JSON.stringify(state));
+    localStorage.setItem(ACTIVE_YEAR_KEY, String(state.year));
   }catch(e){
     console.error("Sauvegarde impossible", e);
     showToast("Erreur de sauvegarde locale");
   }
+}
+
+// Retourne toutes les années qui ont des données en localStorage
+function getAllStoredYears(){
+  const years = new Set();
+  years.add(state ? state.year : 2026);
+  try{
+    for(let i=0; i<localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith(STORE_KEY_PREFIX+"_")){
+        const y = parseInt(k.replace(STORE_KEY_PREFIX+"_",""), 10);
+        if(y >= 2020 && y <= 2099) years.add(y);
+      }
+    }
+    // Vérifier legacy
+    const legacy = localStorage.getItem(STORE_KEY_LEGACY);
+    if(legacy && !localStorage.getItem(storeKeyForYear(2026))) years.add(2026);
+  }catch(e){}
+  return [...years].sort((a,b)=>b-a); // décroissant
+}
+
+// Stats rapides pour une année (sans charger tout le state)
+function getYearStats(y){
+  try{
+    let raw = localStorage.getItem(storeKeyForYear(y));
+    if(!raw && y===2026) raw = localStorage.getItem(STORE_KEY_LEGACY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    const entries = parsed.entries || {};
+    let C=0, P=0, retard=0;
+    const todayIso = getTodayIso();
+    Object.keys(entries).forEach(k=>{
+      const iso = k.split("|")[1];
+      if(!iso || !iso.startsWith(y+"-")) return;
+      const code = entries[k];
+      if(code==="C"){ C++; if(iso < todayIso) retard++; }
+      if(code==="P") P++;
+    });
+    return { C, P, retard };
+  }catch(e){ return null; }
 }
 
 // Returns the set of ISO dates covered by school holidays (official, estimated,
@@ -143,6 +232,7 @@ function setupTabs(){
       document.getElementById("view-"+tab.dataset.view).classList.add("active");
       if(tab.dataset.view === "synthesis") renderSynthesis();
       if(tab.dataset.view === "settings") renderSettings();
+      if(tab.dataset.view === "years") renderYearsTab();
     });
   });
 }
@@ -760,11 +850,16 @@ function changeYearTo(y){
 }
 
 function applyYearChange(y){
-  state.year = y;
+  // Sauvegarder l'année courante avant de changer
   saveState();
-  document.getElementById("yearDisplay").textContent = y;
+  // Charger (ou créer) le state de la nouvelle année
+  state = loadStateForYear(y);
+  saveState();
+  currentMonthIndex = 0; // revenir à janvier de la nouvelle année
   renderCalendar();
-  showToast("Année mise à jour : "+y);
+  renderSettings();
+  renderYearsTab();
+  showToast("Planning " + y + " chargé");
 }
 
 function openYearArchiveSheet(oldYear, newYear){
@@ -1276,6 +1371,117 @@ function applyIndispoEntry(){
 }
 
 // ============================================================
+// ONGLET ANNÉES
+// ============================================================
+function renderYearsTab(){
+  const container = document.getElementById("years-list");
+  if(!container) return;
+  container.innerHTML = "";
+
+  const todayIso = getTodayIso();
+  const years = getAllStoredYears();
+  const currentYear = state.year;
+  const nextYear = Math.max(...years, currentYear) + 1;
+
+  years.forEach(y=>{
+    const stats = (y === currentYear)
+      ? (() => {
+          // Stats depuis le state en mémoire (plus à jour)
+          let C=0, P=0, retard=0;
+          Object.keys(state.entries).forEach(k=>{
+            const iso = k.split("|")[1];
+            if(!iso || !iso.startsWith(y+"-")) return;
+            const code = state.entries[k];
+            if(code==="C"){ C++; if(iso < todayIso) retard++; }
+            if(code==="P") P++;
+          });
+          return {C, P, retard};
+        })()
+      : getYearStats(y);
+
+    const card = document.createElement("div");
+    card.className = "year-card" + (y === currentYear ? " selected" : "");
+    card.dataset.year = y;
+
+    let statsHtml = "";
+    if(stats && (stats.C > 0 || stats.P > 0)){
+      statsHtml = `
+        <div class="year-stat-row">
+          <span class="stat-chip"><span class="stat-dot c"></span><span class="stat-val">${stats.C}</span> j. Convoqué</span>
+          <span class="stat-chip"><span class="stat-dot p"></span><span class="stat-val">${stats.P}</span> j. Payé</span>
+        </div>`;
+      if(stats.retard > 0){
+        statsHtml += `<div class="year-stat-row">
+          <span class="stat-chip"><span class="stat-dot retard"></span><span class="stat-val">${stats.retard}</span> j. en retard</span>
+        </div>`;
+      }
+    } else {
+      statsHtml = `<div class="year-stat-row"><span class="stat-chip year-empty">Aucune donnée</span></div>`;
+    }
+
+    card.innerHTML = `
+      <div class="year-num">${y}</div>
+      <div class="year-stats">${statsHtml}</div>
+      <span class="year-arrow">›</span>`;
+
+    card.addEventListener("click", ()=>{
+      if(y === state.year) return;
+      // Sauvegarder avant de quitter
+      saveState();
+      state = loadStateForYear(y);
+      saveState();
+      currentMonthIndex = 0;
+      renderCalendar();
+      renderSettings();
+      renderYearsTab();
+      // Basculer sur l'onglet calendrier
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+      const calTab = document.querySelector('[data-view="calendar"]');
+      if(calTab) calTab.classList.add("active");
+      document.getElementById("view-calendar").classList.add("active");
+      showToast("Planning " + y + " chargé");
+    });
+
+    container.appendChild(card);
+  });
+
+  // Bouton créer nouvelle année
+  const newYearBtn = document.createElement("button");
+  newYearBtn.className = "btn new-year-btn";
+  newYearBtn.innerHTML = `＋ Créer le planning ${nextYear}`;
+  newYearBtn.addEventListener("click", ()=>{
+    if(!confirm(`Créer un nouveau planning vierge pour ${nextYear} ?\nLes missions de ${currentYear} seront copiées comme base de départ.`)) return;
+    // Créer le state pour la nouvelle année en héritant des missions de l'année courante
+    const newState = defaultStateForYear(nextYear);
+    newState.missions = [...state.missions];
+    newState.tarifJournalier = state.tarifJournalier;
+    newState.vacancesZone = state.vacancesZone;
+    // Sauvegarder
+    try{ localStorage.setItem(storeKeyForYear(nextYear), JSON.stringify(newState)); }catch(e){}
+    // Charger
+    saveState();
+    state = loadStateForYear(nextYear);
+    saveState();
+    currentMonthIndex = 0;
+    renderCalendar();
+    renderSettings();
+    renderYearsTab();
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    const calTab = document.querySelector('[data-view="calendar"]');
+    if(calTab) calTab.classList.add("active");
+    document.getElementById("view-calendar").classList.add("active");
+    showToast("Planning " + nextYear + " créé");
+  });
+  container.appendChild(newYearBtn);
+}
+
+function setupYearsTab(){
+  // Rien à faire : renderYearsTab() construit tout dynamiquement
+}
+
+// ============================================================
 // INIT
 // ============================================================
 window.addEventListener("DOMContentLoaded", ()=>{
@@ -1291,6 +1497,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   setupIndispoEntry();
   setupExportImport();
   renderCalendar();
+  renderYearsTab();
 
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(()=>{});
