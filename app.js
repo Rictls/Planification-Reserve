@@ -52,12 +52,14 @@ function defaultStateForYear(y){
   return {
     year: y,
     tarifJournalier: TARIF_JOURNALIER_DEFAULT,
-    missions: MISSIONS_DEFAULT.filter(m => m !== "Vacances scolaires"),
-    feries: y === 2026 ? [...FERIES_2026] : computeFeriesForYear(y),
+    missions: y === 2027 ? [...MISSIONS_DEFAULT_2027] : MISSIONS_DEFAULT.filter(m => m !== "Vacances scolaires"),
+    feries: y === 2026 ? [...FERIES_2026] : y === 2027 ? [...FERIES_2027] : computeFeriesForYear(y),
     recup: y === 2026 ? [...RECUP_DEFAULT] : [],
     vacancesZone: VACANCES_ZONE_DEFAULT,
     vacancesOverrides: {},
-    entries: y === 2026 ? stripVacancesScolairesEntries({ ...ENTRIES_MIGRATED_2026 }) : {}
+    entries: y === 2026 ? stripVacancesScolairesEntries({ ...ENTRIES_MIGRATED_2026 })
+           : y === 2027 ? { ...ENTRIES_MIGRATED_2027 }
+           : {}
   };
 }
 
@@ -605,8 +607,120 @@ function renderFinanceTable(){
   document.getElementById("financeStatRetard").textContent = totalRetard.toFixed(0)+" €";
 }
 
+// ============================================================
+// RENDER: SYNTHÈSE 12 MOIS (accordéon mensuel)
+// ============================================================
+function renderSynthMonths(){
+  const yr = state.year;
+  const tarif = state.tarifJournalier || 84.2;
+  const container = document.getElementById("synthMonthList");
+  const yearLabel = document.getElementById("synthMonthYear");
+  if(!container) return;
+  if(yearLabel) yearLabel.textContent = yr;
+  container.innerHTML = "";
+
+  // Formater une date ISO en "JJ mois" lisible
+  const MOIS_COURT = ["jan","fév","mar","avr","mai","juin","juil","août","sep","oct","nov","déc"];
+  function fmtDate(iso){
+    const [,m,d] = iso.split("-");
+    return `${parseInt(d,10)} ${MOIS_COURT[parseInt(m,10)-1]}`;
+  }
+
+  // Regrouper les entrées C/P par mois puis par mission → périodes consécutives
+  for(let mIdx=0; mIdx<12; mIdx++){
+    const monthStr = String(mIdx+1).padStart(2,"0");
+    const prefix = `${yr}-${monthStr}-`;
+
+    // Collecter toutes les entrées C/P de ce mois
+    const byMission = {}; // mission → [{iso, code}]
+    Object.keys(state.entries).forEach(key=>{
+      const [mission, iso] = key.split("|");
+      if(!iso || !iso.startsWith(prefix)) return;
+      const code = state.entries[key];
+      if(code !== "C" && code !== "P") return;
+      if(!byMission[mission]) byMission[mission] = [];
+      byMission[mission].push({iso, code});
+    });
+
+    // Construire les périodes pour chaque mission
+    const periods = []; // {mission, start, end, code, nb}
+    state.missions.forEach(mission=>{
+      const days = (byMission[mission] || []).sort((a,b)=>a.iso.localeCompare(b.iso));
+      if(!days.length) return;
+      // Découper en blocs contigus de même code
+      let start = days[0].iso, end = days[0].iso, code = days[0].code, nb = 1;
+      for(let i=1; i<days.length; i++){
+        const d = days[i];
+        // Calculer si consécutif (diff 1 jour) et même code
+        const prevDate = new Date(end+"T00:00:00");
+        const curDate  = new Date(d.iso+"T00:00:00");
+        const diffMs = curDate - prevDate;
+        const isConsec = diffMs === 86400000 && d.code === code;
+        if(isConsec){
+          end = d.iso; nb++;
+        } else {
+          periods.push({mission, start, end, code, nb});
+          start = d.iso; end = d.iso; code = d.code; nb = 1;
+        }
+      }
+      periods.push({mission, start, end, code, nb});
+    });
+
+    // Trier par date de début
+    periods.sort((a,b)=>a.start.localeCompare(b.start));
+
+    const jC = periods.filter(p=>p.code==="C").reduce((s,p)=>s+p.nb,0);
+    const jP = periods.filter(p=>p.code==="P").reduce((s,p)=>s+p.nb,0);
+    const hasData = periods.length > 0;
+    const totalEur = (jC + jP) * tarif;
+
+    const block = document.createElement("div");
+    block.className = "sm-block" + (hasData ? " sm-open" : "");
+
+    const chips = hasData
+      ? `${jC>0?`<span class="sm-chip c">${jC}j C</span>`:""}${jP>0?`<span class="sm-chip p">${jP}j P</span>`:""}<span class="sm-chip eur">${Math.round(totalEur).toLocaleString("fr-FR")} €</span>`
+      : `<span style="font-size:11px;color:var(--text-faint)">—</span>`;
+
+    let rowsHtml = "";
+    if(hasData){
+      periods.forEach(p=>{
+        const dateLabel = p.start === p.end ? fmtDate(p.start) : `${fmtDate(p.start)} → ${fmtDate(p.end)}`;
+        const eur = Math.round(p.nb * tarif).toLocaleString("fr-FR");
+        rowsHtml += `<div class="sm-row">
+          <div class="sm-dot ${p.code.toLowerCase()}"></div>
+          <div class="sm-info">
+            <div class="sm-mname">${p.mission}</div>
+            <div class="sm-dates">${dateLabel}</div>
+          </div>
+          <div class="sm-right">
+            <span class="sm-days ${p.code.toLowerCase()}">${p.nb} j.</span>
+            <span class="sm-eur">${eur} €</span>
+          </div>
+        </div>`;
+      });
+    } else {
+      rowsHtml = `<div class="sm-empty">Aucune mission C/P ce mois</div>`;
+    }
+
+    block.innerHTML = `
+      <div class="sm-header">
+        <span class="sm-name">${MOIS_FR[mIdx]}</span>
+        <div class="sm-chips">${chips}</div>
+        <span class="sm-toggle">▼</span>
+      </div>
+      <div class="sm-body">${rowsHtml}</div>`;
+
+    block.querySelector(".sm-header").addEventListener("click", ()=>{
+      block.classList.toggle("sm-open");
+    });
+
+    container.appendChild(block);
+  }
+}
+
 function renderSynthesis(){
   renderStatCards();
+  renderSynthMonths();
   renderSynthTable();
   renderFinanceTable();
 }

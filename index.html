@@ -400,6 +400,41 @@ table.synth tbody tr:active{background:var(--bg-elev2);}
 .stat-card .val{font-family:var(--ff-display);font-size:26px;color:var(--gold);}
 .stat-card .lbl{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
 
+/* ===== SYNTHÈSE 12 MOIS ===== */
+.sm-block{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg-card);margin-bottom:10px;}
+.sm-header{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--bg-elev);cursor:pointer;user-select:none;border-bottom:1px solid var(--border);}
+.sm-block:not(.sm-open) .sm-header{border-bottom:none;}
+.sm-name{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text);flex:1;}
+.sm-chips{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.sm-chip{font-size:10.5px;font-weight:700;font-family:var(--ff-mono);padding:2px 6px;border-radius:20px;}
+.sm-chip.c{background:rgba(76,175,80,.12);color:#4CAF50;}
+.sm-chip.p{background:rgba(156,111,214,.12);color:#9C6FD6;}
+.sm-chip.eur{background:var(--gold-bg);color:var(--gold);}
+.sm-toggle{font-size:11px;color:var(--text-faint);transition:transform .2s;flex-shrink:0;}
+.sm-block.sm-open .sm-toggle{transform:rotate(180deg);}
+.sm-body{display:none;padding:4px 0;}
+.sm-block.sm-open .sm-body{display:block;}
+.sm-row{display:flex;align-items:center;gap:9px;padding:7px 13px;border-bottom:1px solid var(--border);}
+.sm-row:last-child{border-bottom:none;}
+.sm-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sm-dot.c{background:#4CAF50;}
+.sm-dot.p{background:#9C6FD6;}
+.sm-info{flex:1;min-width:0;}
+.sm-mname{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sm-dates{font-size:10.5px;color:var(--text-dim);font-family:var(--ff-mono);margin-top:1px;}
+.sm-right{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0;}
+.sm-days{font-family:var(--ff-mono);font-size:12.5px;font-weight:700;}
+.sm-days.c{color:#4CAF50;}
+.sm-days.p{color:#9C6FD6;}
+.sm-eur{font-size:10.5px;color:var(--text-dim);font-family:var(--ff-mono);}
+.sm-empty{font-size:11.5px;color:var(--text-faint);font-style:italic;padding:9px 13px;text-align:center;}
+[data-theme="light"] .sm-chip.c{background:rgba(46,125,50,.10);color:#2E7D32;}
+[data-theme="light"] .sm-chip.p{background:rgba(106,63,160,.10);color:#6A3FA0;}
+[data-theme="light"] .sm-dot.c{background:#2E7D32;}
+[data-theme="light"] .sm-dot.p{background:#6A3FA0;}
+[data-theme="light"] .sm-days.c{color:#2E7D32;}
+[data-theme="light"] .sm-days.p{color:#6A3FA0;}
+
 /* ===== FINANCE STAT CARDS (synthèse) ===== */
 .finance-stat-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
 .finance-stat{
@@ -713,6 +748,11 @@ footer.app-footer{
   <!-- ===== VUE SYNTHESE ===== -->
   <section class="view" id="view-synthesis">
     <div class="stat-cards" id="statCards"></div>
+
+    <div class="card" id="synthMonthCard">
+      <p class="card-title">Missions par mois <span class="num" id="synthMonthYear"></span></p>
+      <div id="synthMonthList"></div>
+    </div>
 
     <div class="card">
       <p class="card-title">Synthèse par mission <span class="num" id="synthYear"></span></p>

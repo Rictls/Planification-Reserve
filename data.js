@@ -282,6 +282,59 @@ function isVacancesAnneeEstimee(schoolYearKey){
   return !VACANCES_ANNEES_OFFICIELLES.includes(schoolYearKey);
 }
 
+// Jours fériés France 2027
+const FERIES_2027 = [
+  "2027-01-01", // Jour de l'an
+  "2027-03-29", // Lundi de Pâques
+  "2027-05-01", // Fête du travail
+  "2027-05-06", // Ascension
+  "2027-05-08", // Victoire 1945
+  "2027-05-17", // Lundi de Pentecôte
+  "2027-07-14", // Fête nationale
+  "2027-08-15", // Assomption
+  "2027-11-01", // Toussaint
+  "2027-11-11", // Armistice
+  "2027-12-25"  // Noël
+];
+
+// Missions 2027 (liste issue de l'archive utilisateur)
+const MISSIONS_DEFAULT_2027 = [
+  "PORNIC - DEPP",
+  "PORNIC - PGCV",
+  "PMG",
+  "BLOC n°02",
+  "helfest clisson",
+  "Poseidon",
+  "Poseidon - bis",
+  "DHPP-73",
+  "DHPP-73 BIS",
+  "suavetgae tactique",
+  "formation - JAI",
+  "Formation extincteurs",
+  "DSI PORNIC (08h - 20h)",
+  "DSI PORNIC (15h -23h)",
+  "BMO PORNIC"
+];
+
+const ENTRIES_MIGRATED_2027 = {
+  // 2027-01
+  "DHPP-73 BIS|2027-01-20": "V", "DHPP-73 BIS|2027-01-21": "V", "DHPP-73 BIS|2027-01-22": "V", "DHPP-73 BIS|2027-01-23": "V", "DHPP-73 BIS|2027-01-24": "V", "DHPP-73 BIS|2027-01-25": "V", "DHPP-73 BIS|2027-01-26": "V", "DHPP-73 BIS|2027-01-27": "V", "DHPP-73 BIS|2027-01-28": "V", "DHPP-73 BIS|2027-01-29": "V", "DHPP-73 BIS|2027-01-30": "V", "DHPP-73 BIS|2027-01-31": "V", "DHPP-73|2027-01-07": "V", "DHPP-73|2027-01-08": "V", "DHPP-73|2027-01-09": "V", "DHPP-73|2027-01-10": "V", "DHPP-73|2027-01-11": "V", "DHPP-73|2027-01-12": "V", "DHPP-73|2027-01-13": "V", "DHPP-73|2027-01-14": "V", "DHPP-73|2027-01-15": "V", "DHPP-73|2027-01-16": "V", "DHPP-73|2027-01-17": "V", "DHPP-73|2027-01-18": "V", "DHPP-73|2027-01-19": "V", "DHPP-73|2027-01-20": "V", "DHPP-73|2027-01-21": "V", "Poseidon - bis|2027-01-25": "V", "Poseidon - bis|2027-01-26": "V", "Poseidon - bis|2027-01-27": "V", "Poseidon - bis|2027-01-28": "V", "Poseidon - bis|2027-01-29": "V", "Poseidon - bis|2027-01-30": "V", "Poseidon - bis|2027-01-31": "V", "Poseidon|2027-01-11": "V", "Poseidon|2027-01-12": "V", "Poseidon|2027-01-13": "V", "Poseidon|2027-01-14": "V", "Poseidon|2027-01-15": "V", "Poseidon|2027-01-16": "V", "Poseidon|2027-01-17": "V", "Poseidon|2027-01-18": "V", "Poseidon|2027-01-19": "V", "Poseidon|2027-01-20": "V", "Poseidon|2027-01-21": "V", "Poseidon|2027-01-22": "V", "Poseidon|2027-01-23": "V", "Poseidon|2027-01-24": "V", "Poseidon|2027-01-25": "V", "Poseidon|2027-01-26": "V", "Poseidon|2027-01-27": "V",
+  // 2027-02
+  "DHPP-73 BIS|2027-02-01": "V", "DHPP-73 BIS|2027-02-02": "V", "DHPP-73 BIS|2027-02-03": "V", "DHPP-73 BIS|2027-02-04": "V", "PMG|2027-02-19": "V", "PMG|2027-02-20": "V", "PMG|2027-02-21": "V", "PMG|2027-02-22": "V", "PMG|2027-02-23": "V", "PMG|2027-02-24": "V", "PMG|2027-02-25": "V", "PMG|2027-02-26": "V", "PMG|2027-02-27": "V", "PMG|2027-02-28": "V", "Poseidon - bis|2027-02-01": "V", "Poseidon - bis|2027-02-02": "V", "Poseidon - bis|2027-02-03": "V", "Poseidon - bis|2027-02-04": "V", "Poseidon - bis|2027-02-05": "V", "Poseidon - bis|2027-02-06": "V", "Poseidon - bis|2027-02-07": "V", "Poseidon - bis|2027-02-08": "V", "Poseidon - bis|2027-02-09": "V", "Poseidon - bis|2027-02-10": "V", "Poseidon - bis|2027-02-22": "V", "Poseidon - bis|2027-02-23": "V", "Poseidon - bis|2027-02-24": "V", "Poseidon - bis|2027-02-25": "V", "Poseidon - bis|2027-02-26": "V", "Poseidon - bis|2027-02-27": "V", "Poseidon - bis|2027-02-28": "V", "Poseidon|2027-02-08": "V", "Poseidon|2027-02-09": "V", "Poseidon|2027-02-10": "V", "Poseidon|2027-02-11": "V", "Poseidon|2027-02-12": "V", "Poseidon|2027-02-13": "V", "Poseidon|2027-02-14": "V", "Poseidon|2027-02-15": "V", "Poseidon|2027-02-16": "V", "Poseidon|2027-02-17": "V", "Poseidon|2027-02-18": "V", "Poseidon|2027-02-19": "V", "Poseidon|2027-02-20": "V", "Poseidon|2027-02-21": "V", "Poseidon|2027-02-22": "V", "Poseidon|2027-02-23": "V", "Poseidon|2027-02-24": "V",
+  // 2027-03
+  "PMG|2027-03-01": "V", "PMG|2027-03-02": "V", "PMG|2027-03-03": "V", "PMG|2027-03-04": "V", "PMG|2027-03-05": "V", "PMG|2027-03-06": "V", "Poseidon - bis|2027-03-01": "V", "Poseidon - bis|2027-03-02": "V", "Poseidon - bis|2027-03-03": "V", "Poseidon - bis|2027-03-04": "V", "Poseidon - bis|2027-03-05": "V", "Poseidon - bis|2027-03-06": "V", "Poseidon - bis|2027-03-07": "V", "Poseidon - bis|2027-03-08": "V", "Poseidon - bis|2027-03-09": "V", "Poseidon - bis|2027-03-10": "V", "Poseidon - bis|2027-03-22": "V", "Poseidon - bis|2027-03-23": "V", "Poseidon - bis|2027-03-24": "V", "Poseidon - bis|2027-03-25": "V", "Poseidon - bis|2027-03-26": "V", "Poseidon - bis|2027-03-27": "V", "Poseidon - bis|2027-03-28": "V", "Poseidon - bis|2027-03-29": "V", "Poseidon - bis|2027-03-30": "V", "Poseidon - bis|2027-03-31": "V", "Poseidon|2027-03-08": "V", "Poseidon|2027-03-09": "V", "Poseidon|2027-03-10": "V", "Poseidon|2027-03-11": "V", "Poseidon|2027-03-12": "V", "Poseidon|2027-03-13": "V", "Poseidon|2027-03-14": "V", "Poseidon|2027-03-15": "V", "Poseidon|2027-03-16": "V", "Poseidon|2027-03-17": "V", "Poseidon|2027-03-18": "V", "Poseidon|2027-03-19": "V", "Poseidon|2027-03-20": "V", "Poseidon|2027-03-21": "V", "Poseidon|2027-03-22": "V", "Poseidon|2027-03-23": "V", "Poseidon|2027-03-24": "V",
+  // 2027-04
+  "BLOC n°02|2027-04-25": "V", "BLOC n°02|2027-04-26": "V", "BLOC n°02|2027-04-27": "V", "BLOC n°02|2027-04-28": "V", "BLOC n°02|2027-04-29": "V", "BLOC n°02|2027-04-30": "V", "PMG|2027-04-16": "V", "PMG|2027-04-17": "V", "PMG|2027-04-18": "V", "PMG|2027-04-19": "V", "PMG|2027-04-20": "V", "PMG|2027-04-21": "V", "PMG|2027-04-22": "V", "PMG|2027-04-23": "V", "PMG|2027-04-24": "V", "PMG|2027-04-25": "V", "PMG|2027-04-26": "V", "PMG|2027-04-27": "V", "PMG|2027-04-28": "V", "PMG|2027-04-29": "V", "PMG|2027-04-30": "V", "Poseidon - bis|2027-04-01": "V", "Poseidon - bis|2027-04-02": "V", "Poseidon - bis|2027-04-03": "V", "Poseidon - bis|2027-04-04": "V", "Poseidon - bis|2027-04-05": "V", "Poseidon - bis|2027-04-06": "V", "Poseidon - bis|2027-04-07": "V", "formation - JAI|2027-04-13": "V",
+  // 2027-05
+  "BLOC n°02|2027-05-13": "OFF", "BMO PORNIC|2027-05-13": "OFF", "DHPP-73 BIS|2027-05-13": "OFF", "DHPP-73|2027-05-13": "OFF", "DSI PORNIC (08h - 20h)|2027-05-13": "OFF", "DSI PORNIC (15h -23h)|2027-05-13": "OFF", "Formation extincteurs|2027-05-13": "OFF", "PMG|2027-05-01": "V", "PMG|2027-05-13": "OFF", "PORNIC - DEPP|2027-05-13": "OFF", "PORNIC - PGCV|2027-05-13": "OFF", "Poseidon - bis|2027-05-13": "OFF", "Poseidon|2027-05-13": "OFF", "formation - JAI|2027-05-04": "V", "formation - JAI|2027-05-11": "V", "formation - JAI|2027-05-13": "OFF", "formation - JAI|2027-05-20": "V", "helfest clisson|2027-05-13": "OFF", "suavetgae tactique|2027-05-13": "OFF",
+  // 2027-06
+  "formation - JAI|2027-06-01": "V",
+  // 2027-10
+  "BLOC n°02|2027-10-30": "V", "BLOC n°02|2027-10-31": "V", "PMG|2027-10-22": "V", "PMG|2027-10-23": "V", "PMG|2027-10-24": "V", "PMG|2027-10-25": "V", "PMG|2027-10-26": "V", "PMG|2027-10-27": "V", "PMG|2027-10-28": "V", "PMG|2027-10-29": "V", "PMG|2027-10-30": "V", "PMG|2027-10-31": "V",
+  // 2027-11
+  "BLOC n°02|2027-11-01": "V", "BLOC n°02|2027-11-02": "V", "BLOC n°02|2027-11-03": "V", "BLOC n°02|2027-11-04": "V", "BLOC n°02|2027-11-05": "V", "PMG|2027-11-01": "V", "PMG|2027-11-02": "V", "PMG|2027-11-03": "V", "PMG|2027-11-04": "V", "PMG|2027-11-05": "V", "PMG|2027-11-06": "V"
+};
+
 const ENTRIES_MIGRATED_2026 = {
   // 2026-01
   "DHPP-73 BIS|2026-01-13": "NR", "DHPP-73 BIS|2026-01-14": "NR", "DHPP-73 BIS|2026-01-15": "NR", "DHPP-73 BIS|2026-01-16": "NR", "DHPP-73 BIS|2026-01-17": "NR", "DHPP-73 BIS|2026-01-18": "NR", "DHPP-73 BIS|2026-01-19": "NR", "DHPP-73 BIS|2026-01-20": "NR", "DHPP-73 BIS|2026-01-21": "NR", "DHPP-73 BIS|2026-01-22": "NR", "DHPP-73 BIS|2026-01-23": "NR", "DHPP-73 BIS|2026-01-24": "NR", "DHPP-73 BIS|2026-01-25": "NR", "DHPP-73 BIS|2026-01-26": "NR", "DHPP-73 BIS|2026-01-27": "NR", "DHPP-73 BIS|2026-01-28": "NR", "DHPP-73 BIS|2026-01-29": "NR", "DHPP-73|2026-01-28": "NR", "DHPP-73|2026-01-29": "NR", "DHPP-73|2026-01-30": "NR", "DHPP-73|2026-01-31": "NR", "Poseidon|2026-01-12": "P", "Poseidon|2026-01-13": "P", "Poseidon|2026-01-14": "P", "Poseidon|2026-01-15": "P", "Poseidon|2026-01-16": "P", "Poseidon|2026-01-17": "P", "Poseidon|2026-01-18": "P", "Poseidon|2026-01-19": "P", "Poseidon|2026-01-20": "P", "Poseidon|2026-01-21": "P", "Poseidon|2026-01-22": "P", "Poseidon|2026-01-23": "P", "Poseidon|2026-01-24": "P", "Poseidon|2026-01-25": "P", "Poseidon|2026-01-26": "P", "Poseidon|2026-01-27": "P", "Poseidon|2026-01-28": "P", "suavetgae tactique|2026-01-31": "NR",
