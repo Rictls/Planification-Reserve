@@ -1716,47 +1716,75 @@ function exportSynthesePDF(){
     <td>${gTot}</td>
   </tr></tfoot>`;
 
-  const html = `<!DOCTYPE html><html lang="fr"><head>
-<meta charset="utf-8">
-<title>Synthèse ${year} — MDC(R) Ricard Dimitri</title>
-<style>
-@page{size:A4 portrait;margin:16mm 14mm}
+  const css = `
+@page{size:A4 portrait;margin:10mm 10mm}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;background:#fff}
-.hdr{background:#1E3A5F;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-end;border-radius:4px 4px 0 0;margin-bottom:0}
-.hdr-title{font-size:14px;font-weight:700}
-.hdr-meta{font-size:9px;opacity:.7;margin-top:2px}
-.hdr-year{font-size:24px;font-weight:700;opacity:.25}
-.section{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6B7280;padding:7px 10px 5px;background:#F5F6F8;border-bottom:1px solid #D1D5DB;border-top:1px solid #D1D5DB}
-table{width:100%;border-collapse:collapse;font-size:10.5px}
-th{font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#6B7280;padding:6px 10px;text-align:right;border-bottom:1px solid #D1D5DB;white-space:nowrap}
+body{font-family:Arial,Helvetica,sans-serif;font-size:9px;color:#111;background:#fff}
+.hdr{background:#1E3A5F;color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:0}
+.hdr-title{font-size:12px;font-weight:700}
+.hdr-meta{font-size:8px;opacity:.7;margin-top:1px}
+.hdr-year{font-size:20px;font-weight:700;opacity:.25}
+.section{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6B7280;padding:4px 8px 3px;background:#F5F6F8;border-bottom:1px solid #D1D5DB;border-top:1px solid #D1D5DB}
+table{width:100%;border-collapse:collapse;font-size:9px}
+th{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#6B7280;padding:4px 8px;text-align:right;border-bottom:1px solid #D1D5DB;white-space:nowrap}
 th:first-child{text-align:left}
-td{padding:5px 10px;border-bottom:1px solid #E5E7EB;text-align:right}
-td:first-child{text-align:left;font-weight:500}
-tfoot td{font-weight:700;background:#F5F6F8;border-top:2px solid #D1D5DB;color:#1E3A5F;font-size:10px}
+td{padding:3px 8px;border-bottom:1px solid #E5E7EB;text-align:right;white-space:nowrap}
+td:first-child{text-align:left;font-weight:500;white-space:normal}
+tfoot td{font-weight:700;background:#F5F6F8;border-top:2px solid #D1D5DB;color:#1E3A5F;font-size:9px;white-space:nowrap}
 tfoot td:first-child{text-align:left}
-.mhd td{padding:4px 10px;background:#F5F6F8;text-align:left!important;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#6B7280}
-.per{text-align:left!important;color:#6B7280;font-size:9.5px;font-weight:400!important}
+.mhd td{padding:4px 8px 2px;background:#fff;text-align:left!important;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#1E3A5F;border-bottom:none;border-top:5px solid #F5F6F8;white-space:nowrap}
+.mhd:first-child td{border-top:none}
+tbody tr:not(.mhd) td{padding-left:20px}
+tbody tr:not(.mhd) td:first-child{padding-left:20px;width:32%}
+.per{text-align:left!important;color:#6B7280;font-size:8.5px;font-weight:400!important;white-space:nowrap!important;padding-left:8px!important}
 .zero{color:#D1D5DB}
 .cp{color:#166534}.cc{color:#5B21B6}.cr{color:#991B1B;font-weight:700}.cv{color:#1D4ED8}
-.sep{height:1px;background:#D1D5DB}
-.footer{padding:7px 10px;font-size:9px;color:#6B7280;border-top:1px solid #D1D5DB;display:flex;justify-content:space-between}
-</style></head><body>
-<div class="hdr"><div><div class="hdr-title">Synthèse Planning Réserve</div><div class="hdr-meta">MDC (R) Ricard Dimitri · COB Pornic · Tarif ${tarif.toFixed(2).replace('.',',')} €/j</div></div><div class="hdr-year">${year}</div></div>
+.footer{padding:5px 8px;font-size:8px;color:#6B7280;border-top:1px solid #D1D5DB;display:flex;justify-content:space-between;margin-top:3px}
+.print-btn{position:fixed;top:12px;right:12px;padding:8px 16px;background:#1E3A5F;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer}
+@media print{.print-btn{display:none}}`;
+
+  const html = `<!DOCTYPE html><html lang="fr"><head>
+<meta charset="utf-8">
+<title>Synthese_${year}_Ricard_Dimitri</title>
+<style>${css}</style>
+</head><body>
+<button class="print-btn" onclick="window.print()">🖨 Imprimer / PDF</button>
+<div class="hdr">
+  <div>
+    <div class="hdr-title">Synthèse Planning Réserve</div>
+    <div class="hdr-meta">MDC (R) Ricard Dimitri · COB Pornic · Tarif ${tarif.toFixed(2).replace('.',',')} €/j</div>
+  </div>
+  <div class="hdr-year">${year}</div>
+</div>
 <div class="section">Solde financier mensuel</div>
-<table><thead><tr><th style="text-align:left">Mois</th><th>Payé</th><th>À venir</th><th>En retard</th></tr></thead><tbody>${rowsFin}
-<div class="sep"></div>
+<table>
+  <thead><tr><th style="text-align:left">Mois</th><th>Payé</th><th>À venir</th><th>En retard</th></tr></thead>
+  <tbody>${rowsFin}
+</table>
 <div class="section">Missions par mois — détail</div>
-<table><thead><tr><th style="text-align:left;width:36%">Mission</th><th style="text-align:left">Période</th><th>C</th><th>P</th><th>V</th><th>Total</th></tr></thead><tbody>${rowsMis}
-<div class="footer"><span>Réserve Gendarmerie Nationale · Région Pays de la Loire</span><span>Généré le ${dateStr} · Tarif ${tarif.toFixed(2).replace('.',',')} €/j</span></div>
+<table>
+  <thead><tr><th style="text-align:left;width:36%">Mission</th><th style="text-align:left">Période</th><th>C</th><th>P</th><th>V</th><th>Total</th></tr></thead>
+  <tbody>${rowsMis}
+</table>
+<div class="footer">
+  <span>Réserve Gendarmerie Nationale · Région Pays de la Loire</span>
+  <span>Généré le ${dateStr} · Tarif ${tarif.toFixed(2).replace('.',',')} €/j</span>
+</div>
 </body></html>`;
 
-  const win = window.open('','_blank');
-  if(!win){ alert("Autorisez les pop-ups pour exporter le PDF."); return; }
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(()=>{ win.print(); }, 400);
+  // Téléchargement direct — pas de pop-up bloqué
+  try {
+    const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `Synthese_${year}_Ricard_Dimitri.html`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  } catch(e) {
+    alert("Erreur lors de la génération : " + e.message);
+  }
 }
 
 // ============================================================

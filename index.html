@@ -766,9 +766,6 @@ footer.app-footer{
       <div style="overflow-x:auto;">
         <table class="synth" id="synthTable"></table>
       </div>
-      <div style="margin-top:12px;text-align:right;">
-        <button class="btn-secondary" id="btnExportPDF" onclick="exportSynthesePDF()">⬇ Exporter PDF</button>
-      </div>
     </div>
 
     <div class="card">
@@ -894,6 +891,14 @@ footer.app-footer{
       <button class="btn" id="exportIcsBtn" style="width:100%;border-color:var(--c-C);color:var(--c-C);">
         📅 Télécharger le fichier .ics
       </button>
+    </div>
+
+    <div class="card">
+      <p class="card-title">📄 Fiche synthèse PDF</p>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 14px;">
+        Génère une fiche A4 avec le solde financier mensuel et le détail des missions par mois — à ouvrir dans le navigateur puis imprimer en PDF.
+      </p>
+      <button class="btn" id="btnExportPDF" onclick="exportSynthesePDF()" style="width:100%;">⬇ Télécharger la fiche synthèse</button>
     </div>
 
     <div class="card">
