@@ -149,6 +149,9 @@ function saveState(){
 function getAllStoredYears(){
   const years = new Set();
   years.add(state ? state.year : 2026);
+  // Années avec données migrées embarquées — toujours disponibles
+  years.add(2026);
+  years.add(2027);
   try{
     for(let i=0; i<localStorage.length; i++){
       const k = localStorage.key(i);
@@ -1620,6 +1623,140 @@ function setupYearPill(){
   document.addEventListener("click", (e)=>{
     if(wrap && !wrap.contains(e.target)) closeYearDropdown();
   });
+}
+
+// ============================================================
+// EXPORT PDF — fiche synthèse A4
+// ============================================================
+function exportSynthesePDF(){
+  const tarif = state.tarifJournalier || 84.2;
+  const year  = state.year;
+  const todayIso = getTodayIso();
+  const today = new Date();
+  const dateStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+  const fmt = n => n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  const z   = n => n===0 ? '<span class="zero">0,00 €</span>' : fmt(n);
+  const zn  = n => n===0 ? '<span class="zero">0</span>' : n;
+  const MOIS_AB = ["jan","fév","mar","avr","mai","jun","jul","aoû","sep","oct","nov","déc"];
+  const MOIS_L  = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+  // ── Tableau 1 : solde financier mensuel ──────────────────
+  let rowsFin = '', totP=0, totC=0, totR=0;
+  for(let m=0;m<12;m++){
+    let jp=0,ja=0,jr=0;
+    Object.keys(state.entries).forEach(key=>{
+      const [,iso]=key.split("|");
+      if(!iso||!iso.startsWith(year+"-")) return;
+      if(parseInt(iso.split("-")[1],10)-1 !== m) return;
+      const code=state.entries[key];
+      if(code==="P") jp++;
+      if(code==="C"){ if(iso<todayIso) jr++; else ja++; }
+    });
+    totP+=jp; totC+=ja; totR+=jr;
+    const p=jp*tarif,a=ja*tarif,r=jr*tarif;
+    rowsFin+=`<tr>
+      <td>${MOIS_L[m]}</td>
+      <td class="${jp?'cp':''}">${z(p)}</td>
+      <td class="${ja?'cc':''}">${z(a)}</td>
+      <td class="${jr?'cr':''}">${z(r)}</td>
+    </tr>`;
+  }
+  rowsFin+=`</tbody><tfoot><tr>
+    <td>TOTAL</td>
+    <td>${fmt(totP*tarif)}</td>
+    <td>${fmt(totC*tarif)}</td>
+    <td class="${totR?'cr':''}">${fmt(totR*tarif)}</td>
+  </tr></tfoot>`;
+
+  // ── Tableau 2 : missions par mois ───────────────────────
+  const missions = {};
+  Object.keys(state.entries).forEach(key=>{
+    const [mission,iso]=key.split("|");
+    const v=state.entries[key];
+    if(!iso||!iso.startsWith(year+"-")||v==="OFF"||v==="NR") return;
+    const mo=parseInt(iso.split("-")[1],10)-1;
+    if(!missions[mission]) missions[mission]={};
+    if(!missions[mission][mo]) missions[mission][mo]={C:0,P:0,V:0,dates:[]};
+    missions[mission][mo][v]=(missions[mission][mo][v]||0)+1;
+    missions[mission][mo].dates.push(iso);
+  });
+  const missionList=Object.keys(missions).sort((a,b)=>
+    Math.min(...Object.keys(missions[a]).map(Number))-Math.min(...Object.keys(missions[b]).map(Number)));
+  const rows=[];
+  for(let m=0;m<12;m++){
+    for(const mission of missionList){
+      if(missions[mission]&&missions[mission][m]) rows.push({m,mission,data:missions[mission][m]});
+    }
+  }
+  let rowsMis='', lastM=-1, gC=0,gP=0,gV=0,gTot=0;
+  for(const {m,mission,data} of rows){
+    if(m!==lastM){
+      rowsMis+=`<tr class="mhd"><td colspan="6">${MOIS_L[m].toUpperCase()}</td></tr>`;
+      lastM=m;
+    }
+    const dts=data.dates.sort();
+    const fmtD=d=>`${parseInt(d.split('-')[2],10)} ${MOIS_AB[parseInt(d.split('-')[1],10)-1]}`;
+    const per=dts[0]===dts[dts.length-1]?fmtD(dts[0]):`${fmtD(dts[0])} → ${fmtD(dts[dts.length-1])}`;
+    const c=data.C||0,p=data.P||0,v=data.V||0,tot=c+p+v;
+    gC+=c;gP+=p;gV+=v;gTot+=tot;
+    rowsMis+=`<tr>
+      <td>${mission}</td>
+      <td class="per">${per}</td>
+      <td class="${c?'cc':''}">${zn(c)}</td>
+      <td class="${p?'cp':''}">${zn(p)}</td>
+      <td class="${v?'cv':''}">${zn(v)}</td>
+      <td>${tot}</td>
+    </tr>`;
+  }
+  rowsMis+=`</tbody><tfoot><tr>
+    <td colspan="2">TOTAL</td>
+    <td class="cc">${gC}</td>
+    <td class="cp">${gP}</td>
+    <td class="cv">${gV}</td>
+    <td>${gTot}</td>
+  </tr></tfoot>`;
+
+  const html = `<!DOCTYPE html><html lang="fr"><head>
+<meta charset="utf-8">
+<title>Synthèse ${year} — MDC(R) Ricard Dimitri</title>
+<style>
+@page{size:A4 portrait;margin:16mm 14mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;background:#fff}
+.hdr{background:#1E3A5F;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-end;border-radius:4px 4px 0 0;margin-bottom:0}
+.hdr-title{font-size:14px;font-weight:700}
+.hdr-meta{font-size:9px;opacity:.7;margin-top:2px}
+.hdr-year{font-size:24px;font-weight:700;opacity:.25}
+.section{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6B7280;padding:7px 10px 5px;background:#F5F6F8;border-bottom:1px solid #D1D5DB;border-top:1px solid #D1D5DB}
+table{width:100%;border-collapse:collapse;font-size:10.5px}
+th{font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#6B7280;padding:6px 10px;text-align:right;border-bottom:1px solid #D1D5DB;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:5px 10px;border-bottom:1px solid #E5E7EB;text-align:right}
+td:first-child{text-align:left;font-weight:500}
+tfoot td{font-weight:700;background:#F5F6F8;border-top:2px solid #D1D5DB;color:#1E3A5F;font-size:10px}
+tfoot td:first-child{text-align:left}
+.mhd td{padding:4px 10px;background:#F5F6F8;text-align:left!important;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#6B7280}
+.per{text-align:left!important;color:#6B7280;font-size:9.5px;font-weight:400!important}
+.zero{color:#D1D5DB}
+.cp{color:#166534}.cc{color:#5B21B6}.cr{color:#991B1B;font-weight:700}.cv{color:#1D4ED8}
+.sep{height:1px;background:#D1D5DB}
+.footer{padding:7px 10px;font-size:9px;color:#6B7280;border-top:1px solid #D1D5DB;display:flex;justify-content:space-between}
+</style></head><body>
+<div class="hdr"><div><div class="hdr-title">Synthèse Planning Réserve</div><div class="hdr-meta">MDC (R) Ricard Dimitri · COB Pornic · Tarif ${tarif.toFixed(2).replace('.',',')} €/j</div></div><div class="hdr-year">${year}</div></div>
+<div class="section">Solde financier mensuel</div>
+<table><thead><tr><th style="text-align:left">Mois</th><th>Payé</th><th>À venir</th><th>En retard</th></tr></thead><tbody>${rowsFin}
+<div class="sep"></div>
+<div class="section">Missions par mois — détail</div>
+<table><thead><tr><th style="text-align:left;width:36%">Mission</th><th style="text-align:left">Période</th><th>C</th><th>P</th><th>V</th><th>Total</th></tr></thead><tbody>${rowsMis}
+<div class="footer"><span>Réserve Gendarmerie Nationale · Région Pays de la Loire</span><span>Généré le ${dateStr} · Tarif ${tarif.toFixed(2).replace('.',',')} €/j</span></div>
+</body></html>`;
+
+  const win = window.open('','_blank');
+  if(!win){ alert("Autorisez les pop-ups pour exporter le PDF."); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); }, 400);
 }
 
 // ============================================================

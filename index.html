@@ -372,6 +372,13 @@ table.cal thead th.mission-name{
 }
 .btn.primary{background:var(--gold);color:var(--on-gold);border-color:var(--gold);}
 .btn:active{opacity:0.75;}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:8px;border:1px solid var(--line);
+  background:var(--bg-elev2);color:var(--text-dim);
+  font-size:12px;font-family:var(--ff-display);letter-spacing:.03em;cursor:pointer;
+}
+.btn-secondary:active{opacity:.7;}
 
 /* ===== SYNTHESIS TABLE ===== */
 table.synth{width:100%;border-collapse:collapse;font-size:12.5px;}
@@ -758,6 +765,9 @@ footer.app-footer{
       <p class="card-title">Synthèse par mission <span class="num" id="synthYear"></span></p>
       <div style="overflow-x:auto;">
         <table class="synth" id="synthTable"></table>
+      </div>
+      <div style="margin-top:12px;text-align:right;">
+        <button class="btn-secondary" id="btnExportPDF" onclick="exportSynthesePDF()">⬇ Exporter PDF</button>
       </div>
     </div>
 
